@@ -199,7 +199,12 @@ class Chord {
             newPitchVector.push(0);
         }
         newPitchVector[Math.abs(dim)] += Math.sign(dim);
-        if (this.getPitch(newPitchVector)) return;
+        var existingPitch = this.getPitch(newPitchVector)
+        if (existingPitch) {
+            // Check if the input dim already exists to reach the existing pitch
+            if (! parent.childDims.includes(dim)) parent.childDims.push(dim);
+            return;
+        }
 
         // Add pitch
         var child = new Pitch(this, newPitchVector, parent);

@@ -150,11 +150,11 @@ class Pitch {
 
         // Add pitch line
         var thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
-        addPitchLine(x, x+PITCH_LINE_LEN, thisY, "white", 1, settings.pitchLineWidth, "pitchLine chord");
+        addPitchLine(x, x+PITCH_LINE_LEN, thisY, "white", 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
 
         // Add interval bars
         for (var dim of this.childDims) {
-            addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, Math.sign(dim) === -1);
+            addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid);
         }
     }
 }
@@ -164,6 +164,7 @@ class Chord {
         this.relativeFreq = relativeFreq;
         var basePitch = new Pitch(this);
         this.pitches = [basePitch];
+        this.uid = "chord-" + newUniqueId();
     }
     
     /**
@@ -235,6 +236,9 @@ class Chord {
     }
 
     addToViewport(x) {
+        document.querySelectorAll("." + this.uid).forEach(el => {
+            el.remove();
+        });
         for (var p of this.pitches) {
             p.addToViewport(x, this.relativeFreq);
         }
@@ -352,7 +356,7 @@ function addCurveLine(x, deform, y1, y2, color, opacity=1, width=8, classes="") 
  * @param {number} startY 
  * @param {boolean} descending 
  */
-function addAscentBar(dim, x1, x2, startY, descending=false) {
+function addAscentBar(dim, x1, x2, startY, descending=false, classes="ascentBar") {
     const height = Math.log2(getPureInterval(settings.axes[dim])) * settings.octaveScale;
     const defaultWidth = 8;
     var startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
@@ -362,28 +366,28 @@ function addAscentBar(dim, x1, x2, startY, descending=false) {
     switch (dim) {
         case 1:
             const arrowSize = 14;
-            addLine(x1, x1, startY-arrowSize, startY-height, settings.axisColors[dim], 1, 4, "ascentLine");
+            addLine(x1, x1, startY-arrowSize, startY-height, settings.axisColors[dim], 1, 4, classes);
             var overshoot = Math.SQRT2 * 4/4; // sqrt2 times 1/4 of the width of the lines to create the arrow
-            addLine(x1-arrowSize, x1+overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, "ascentLine");
-            addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, "ascentLine");
+            addLine(x1-arrowSize, x1+overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
+            addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
             break;
         case 2:
-            addLine(x1, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addLine(x1, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
             break;
         case 3:
-            addLine(x2, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addLine(x2, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
             break;
         case 4:
-            addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
             break;
         case 5:
-            addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
             break;
         case 6:
-            addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
             break;
         case 7:
-            addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, "ascentLine");
+            addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
     }
 }
 

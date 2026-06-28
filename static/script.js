@@ -207,6 +207,11 @@ class Chord {
         this.pitches.push(child);
     }
 
+    inputInterval(y, dim) {
+        var pitch = this.findNearestPitch(y);
+        this.addPitch(pitch.transformedVector.slice(1), dim);
+    }
+
     /**
      * Returns the pitch in the chord nearest to the given y coordinate in the svg.
      * @param {number} y 
@@ -242,7 +247,7 @@ function menuSelect(arg) {
             document.querySelector(`#button-${arg.slice(1)}`).classList.add("selected-button");
             break;
         case 'D':
-            selectedDirection = arg[2] === "a"? 1:-1;
+            selectedDirection = arg[1] === "a"? 1:-1;
             document.querySelectorAll(".direction-button").forEach((el) => {
                 el.classList.remove("selected-button");
             });
@@ -374,19 +379,14 @@ document.querySelector("#viewport").addEventListener("click", (event) => {
     // var y = event.clientY - rect.top;
     console.log(`Mouse at (${event.offsetX}, ${event.offsetY})`);
     console.log(myChord.findNearestPitch(event.offsetY));
+    myChord.inputInterval(event.offsetY, selectedDimension * selectedDirection);
+    myChord.addToViewport(50); // TEMPORARY
 });
 
 let cMajor = new KeyArea("my_key", 2, 3, 261.63);
 cMajor.addToViewport();
 let myChord = new Chord(261.63);
 myChord.addPitch([0], 2);
-// myChord.addPitch([0, 1], -3);
-myChord.addPitch([0], 5);
-myChord.addPitch([0], -5);
-// myChord.addPitch([0, 0, 0, 0, 1], 5);
-// myChord.addPitch([0, 0, 0, 0, 2], 5);
-// myChord.addPitch([0, 0, 0, 0, -1], -5);
-// myChord.addPitch([0, 0, 0, 0, -2], -5);
 
 myChord.addToViewport(50);
 refitSvgContent();

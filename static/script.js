@@ -9,6 +9,9 @@ const C_0 = 16.3516 //hz
 var selectedDimension = 2;
 var selectedDirection = 1;
 
+var viewportX = 0;
+var viewportY = 0;
+
 viewport.style.backgroundColor = "#676681";
 
 var settings = {
@@ -204,6 +207,23 @@ class Chord {
         this.pitches.push(child);
     }
 
+    /**
+     * Returns the pitch in the chord nearest to the given y coordinate in the svg.
+     * @param {number} y 
+     */
+    findNearestPitch(y) {
+        var minDistance = Infinity;
+        var closestPitch = null;
+        for (var p of this.pitches) {
+            var pitchY = Math.log2(this.relativeFreq * p.getRatio() / C_0) * settings.octaveScale * -1;
+            if (Math.abs(pitchY - y - viewportY) < minDistance) {
+                minDistance = Math.abs(pitchY - y - viewportY);
+                closestPitch = p;
+            }
+        }
+        return closestPitch;
+    }
+
     addToViewport(x) {
         for (var p of this.pitches) {
             p.addToViewport(x, this.relativeFreq);
@@ -255,6 +275,8 @@ function getTransformedInterval(arr) {
 function refitSvgContent() {
     const bbox = viewport.getBBox();
     const padding = 0;
+    viewportX = bbox.x;
+    viewportY = bbox.y;
     viewport.setAttribute("viewBox", `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
     viewport.setAttribute("width", bbox.width + padding * 2);
     viewport.setAttribute("height", bbox.height + padding * 2);
@@ -350,7 +372,8 @@ document.querySelector("#viewport").addEventListener("click", (event) => {
     var rect = event.target.getBoundingClientRect();
     // var x = event.clientX - rect.left;
     // var y = event.clientY - rect.top;
-    console.log(`Mouse at (${event.clientX}, ${event.clientY})`);
+    console.log(`Mouse at (${event.offsetX}, ${event.offsetY})`);
+    console.log(myChord.findNearestPitch(event.offsetY));
 });
 
 let cMajor = new KeyArea("my_key", 2, 3, 261.63);

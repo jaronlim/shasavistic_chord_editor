@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+    <div id="content">
+        <div id="nav">
+            <a href="#" onclick="switchEditorTo('Chord')">Chord</a>
+            <a href="#" onclick="switchEditorTo('Sound')">Sound</a>
+        </div>
+        <div id="sidebar">
+            <button type="button" onclick="menuSelect('A1d')" class="menu-button axis-button" id="button-1d">
+                <img src="static/images/1d-symbol.png" alt="1D axis button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A2d')" class="menu-button axis-button selected-button" id="button-2d">
+                <img src="static/images/2d-symbol.png" alt="2D axis button" style="width:30px; height:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A3d')" class="menu-button axis-button" id="button-3d">
+                <img src="static/images/3d-symbol.png" alt="3D axis button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A4d')" class="menu-button axis-button" id="button-4d">
+                <img src="static/images/4d-symbol.png" alt="4D axis button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A5d')" class="menu-button axis-button" id="button-5d">
+                <img src="static/images/5d-symbol.png" alt="5D axis button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A6d')" class="menu-button axis-button" id="button-6d">
+                <img src="static/images/6d-symbol.png" alt="6D axis button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('A7d')" class="menu-button axis-button" id="button-7d">
+                <img src="static/images/7d-symbol.png" alt="7D axis button" style="height:30px; width:auto;">
+            </button>
+
+            <hr style="margin-right:2px">
+
+            <button type="button" onclick="menuSelect('Dascent')" class="menu-button direction-button selected-button" id="button-ascent">
+                <img src="static/images/ascent-symbol.png" alt="ascent button" style="height:30px; width:auto;">
+            </button>
+            <button type="button" onclick="menuSelect('Ddescent')" class="menu-button direction-button" id="button-descent">
+                <img src="static/images/descent-symbol.png" alt="descent button" style="height:30px; width:auto;">
+            </button>
+        </div>
+        <div id="viewport-frame">
+            <div id="viewport-container">
+                <svg id="viewport"></svg>
+            </div>
+        </div>
+    </div>
+    <script src="static/script.js"></script>
+</body>
+</html>

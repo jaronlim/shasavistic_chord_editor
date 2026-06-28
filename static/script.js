@@ -242,6 +242,19 @@ class Chord {
 
 }
 
+var idsInUse = [];
+function newUniqueId() {
+    const chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+    do {
+        var id = "";
+        for (var i = 0; i < 5; i++) {
+            id += chars[Math.round(Math.random()*35)];
+        }
+    } while (idsInUse.includes(id));
+    idsInUse.push(id);
+    return id;
+}
+
 function menuSelect(arg) {
     switch (arg[0]) {
         case 'A':

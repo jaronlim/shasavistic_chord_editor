@@ -203,7 +203,29 @@ class Chord {
         var existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
             // Check if the input dim already exists to reach the existing pitch
-            if (! parent.childDims.includes(dim)) parent.childDims.push(dim);
+            if (parent.childDims.includes(dim)) {
+                // Remove the existing pitch if it 
+                parent.childDims.filter((d) => {d !== dim;});
+                for (let i = 0; i < parent.childDims.length; i++) {
+                    if (parent.childDims[i] == dim) {
+                        parent.childDims.splice(i, 1);
+                        existingPitch.parentPitches.splice(existingPitch.parentPitches.indexOf(parent), 1);
+                        break;
+                    }
+                }
+                if (existingPitch.childDims.length == 0 && existingPitch.parentPitches.length == 0) {
+                    for (let i = 0; i < this.pitches.length; i++) {
+                        if (Pitch.intervalsEqual(this.pitches[i].transformedVector, existingPitch.transformedVector)) {
+                            this.pitches.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                // Add the requested dimension
+                parent.childDims.push(dim);
+                existingPitch.parentPitches.push(parent);
+            }
             return;
         }
 
@@ -399,8 +421,6 @@ document.querySelector("#viewport").addEventListener("click", (event) => {
     var rect = event.target.getBoundingClientRect();
     // var x = event.clientX - rect.left;
     // var y = event.clientY - rect.top;
-    console.log(`Mouse at (${event.offsetX}, ${event.offsetY})`);
-    console.log(myChord.findNearestPitch(event.offsetY));
     myChord.inputInterval(event.offsetY, selectedDimension * selectedDirection);
     myChord.addToViewport(50); // TEMPORARY
 });

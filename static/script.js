@@ -9,6 +9,8 @@ const C_0 = 16.3516 //hz
 var selectedDimension = 2;
 var selectedDirection = 1;
 
+var selectedPitch = null; // Hovered over / highlighted pitch
+
 var viewportX = 0;
 var viewportY = 0;
 
@@ -40,8 +42,11 @@ var settings = {
         "#ed9877"
     ],
 
-
+    // PITCH/INTERVAL-BAR SETTINGS
     "pitchLineWidth": 2,
+    "pitchLineColor": "white",
+    "pitchLineSelectedWidth": 4,
+    "pitchLineSelectedColor": "#fbff00",
 
     // KEY AREA SETTINGS
     "tonicLineWidth":  2,
@@ -118,7 +123,8 @@ class Pitch {
         }
         this.childPitches = [];
         this.childDims = [];
-        this.uid = "pitch-" + newUniqueId();
+        this.htmlPitchElement = null;
+        this.htmlIntervalBarElements = [];
     }
 
 
@@ -151,11 +157,11 @@ class Pitch {
 
         // Add pitch line
         var thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
-        addPitchLine(x, x+PITCH_LINE_LEN, thisY, "white", 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid + ' ' + this.uid);
+        this.htmlPitchElement = addPitchLine(x, x+PITCH_LINE_LEN, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
 
         // Add interval bars
         for (var dim of this.childDims) {
-            addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid);
+            this.htmlIntervalBarElements.push(addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid));
         }
     }
 }
@@ -259,6 +265,7 @@ class Chord {
     }
 
     addToViewport(x) {
+        // TODO: Reduce unnecessary operations
         document.querySelectorAll("." + this.uid).forEach(el => {
             el.remove();
         });
@@ -391,6 +398,7 @@ function addAscentBar(dim, x1, x2, startY, descending=false, classes="ascentBar"
     }
     switch (dim) {
         case 1:
+            // TODO: make this function return 1D interval bar element
             const arrowSize = 14;
             addLine(x1, x1, startY-arrowSize, startY-height, settings.axisColors[dim], 1, 4, classes);
             var overshoot = Math.SQRT2 * 4/4; // sqrt2 times 1/4 of the width of the lines to create the arrow
@@ -398,46 +406,43 @@ function addAscentBar(dim, x1, x2, startY, descending=false, classes="ascentBar"
             addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
             break;
         case 2:
-            addLine(x1, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
-            break;
+            return addLine(x1, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
         case 3:
-            addLine(x2, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
-            break;
+            return addLine(x2, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
         case 4:
-            addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
-            break;
+            return addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
         case 5:
-            addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
-            break;
+            return addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
         case 6:
-            addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
-            break;
+            return addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
         case 7:
-            addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+        default:
+            return null;
     }
 }
 
-function addPitchLine(x1, x2, y, color="white", opacity=1, width=settings.pitchLineWidth, classes="pitchLine") {
-    addLine(x1, x2, y, y, color, opacity, width, classes);
+function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width=settings.pitchLineWidth, classes="pitchLine") {
+    return addLine(x1, x2, y, y, color, opacity, width, classes);
 }
 
 viewport.addEventListener("mousemove", (event) => {
     // TODO: Update the "mousemove" and "mouseout" function to be for a specific chord
     // TODO: Remove highlight when mouse moves far away vertically or horizontally.
-    var nearestPitch = myChord.findNearestPitch(event.offsetY);
-    if (nearestPitch) {
-        document.querySelectorAll("." + nearestPitch.parentChord.uid + ".pitchLine").forEach((el) => {
-            el.setAttribute("stroke", "white");
-            el.setAttribute("stroke-width", "2");
+    selectedPitch = myChord.findNearestPitch(event.offsetY);
+    if (selectedPitch) {
+        document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
+            el.setAttribute("stroke", settings.pitchLineColor);
+            el.setAttribute("stroke-width", settings.pitchLineWidth);
         });
-        document.getElementsByClassName(nearestPitch.uid)[0].setAttribute("stroke", "yellow");
-        document.getElementsByClassName(nearestPitch.uid)[0].setAttribute("stroke-width", "4");
+        selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineSelectedColor);
+        selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
     }
 });
 viewport.addEventListener("mouseout", (event) => {
     document.querySelectorAll("." + myChord.uid + ".pitchLine").forEach((el) => {
-            el.setAttribute("stroke", "white");
-            el.setAttribute("stroke-width", "2");
+            el.setAttribute("stroke", settings.pitchLineColor);
+            el.setAttribute("stroke-width", settings.pitchLineWidth);
         });
 })
 viewport.addEventListener("click", (event) => {

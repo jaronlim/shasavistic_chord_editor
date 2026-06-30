@@ -118,6 +118,7 @@ class Pitch {
         }
         this.childPitches = [];
         this.childDims = [];
+        this.uid = "pitch-" + newUniqueId();
     }
 
 
@@ -150,7 +151,7 @@ class Pitch {
 
         // Add pitch line
         var thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
-        addPitchLine(x, x+PITCH_LINE_LEN, thisY, "white", 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+        addPitchLine(x, x+PITCH_LINE_LEN, thisY, "white", 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid + ' ' + this.uid);
 
         // Add interval bars
         for (var dim of this.childDims) {
@@ -326,6 +327,9 @@ function refitSvgContent() {
     const padding = 0;
     viewportX = bbox.x;
     viewportY = bbox.y;
+    if (bbox.height < viewport.clientHeight) {
+        viewportY -= (viewport.clientHeight - bbox.height) / 2; // TODO: perform this fix agan whenever aspect ratio changes
+    }
     viewport.setAttribute("viewBox", `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
     viewport.setAttribute("width", bbox.width + padding * 2);
     viewport.setAttribute("height", bbox.height + padding * 2);
@@ -417,12 +421,29 @@ function addPitchLine(x1, x2, y, color="white", opacity=1, width=settings.pitchL
     addLine(x1, x2, y, y, color, opacity, width, classes);
 }
 
-document.querySelector("#viewport").addEventListener("click", (event) => {
-    var rect = event.target.getBoundingClientRect();
-    // var x = event.clientX - rect.left;
-    // var y = event.clientY - rect.top;
+viewport.addEventListener("mousemove", (event) => {
+    // TODO: Update the "mousemove" and "mouseout" function to be for a specific chord
+    // TODO: Remove highlight when mouse moves far away vertically or horizontally.
+    var nearestPitch = myChord.findNearestPitch(event.offsetY);
+    if (nearestPitch) {
+        document.querySelectorAll("." + nearestPitch.parentChord.uid + ".pitchLine").forEach((el) => {
+            el.setAttribute("stroke", "white");
+            el.setAttribute("stroke-width", "2");
+        });
+        document.getElementsByClassName(nearestPitch.uid)[0].setAttribute("stroke", "yellow");
+        document.getElementsByClassName(nearestPitch.uid)[0].setAttribute("stroke-width", "4");
+    }
+});
+viewport.addEventListener("mouseout", (event) => {
+    document.querySelectorAll("." + myChord.uid + ".pitchLine").forEach((el) => {
+            el.setAttribute("stroke", "white");
+            el.setAttribute("stroke-width", "2");
+        });
+})
+viewport.addEventListener("click", (event) => {
+
     myChord.inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    myChord.addToViewport(50); // TEMPORARY
+    myChord.addToViewport(50); // TODO: REPLACE TEMPORARY OPERATION
 });
 
 let cMajor = new KeyArea("my_key", 2, 3, 261.63);

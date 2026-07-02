@@ -7,13 +7,13 @@ const pitchAxisScale = 1;
 const PRIMES = [2, 3, 5, 7, 11, 13, 17];
 const C_0 = 16.3516 //hz
 
-var selectedDimension = 2;
-var selectedDirection = 1;
+let selectedDimension = 2;
+let selectedDirection = 1;
 
-var selectedPitch = null; // Hovered over / highlighted pitch
+let selectedPitch = null; // Hovered over / highlighted pitch
 
-var viewportX = 0;
-var viewportY = 0;
+let viewportX = 0;
+let viewportY = 0;
 
 const viewportPaddingX = 50;
 
@@ -21,7 +21,7 @@ viewport.style.backgroundColor = "#676681";
 
 const PITCH_LINE_LEN = 70;
 
-var settings = {
+let settings = {
     
     "octaveScale": 120, // TODO: change default ctrl+scroll behavior to zoom
 
@@ -115,28 +115,28 @@ class KeyArea {
         const tonicY = Math.log2(this.tonicFreq/C_0) * settings.octaveScale * -1;
         addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${name}`);
         // Interval Heights
-        var primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
-        var secondaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.secondaryAxis])) * settings.octaveScale;
+        let primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
+        let secondaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.secondaryAxis])) * settings.octaveScale;
         // Primary Below
-        var thisY = tonicY + primaryIntervalHeight;
+        let thisY = tonicY + primaryIntervalHeight;
         while (thisY < tonicY + containerHeight / 2) {
             addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
             thisY += primaryIntervalHeight;
         }
         // Primary Above
-        var thisY = tonicY - primaryIntervalHeight;
+        thisY = tonicY - primaryIntervalHeight;
         while (thisY > tonicY - containerHeight / 2) {
             addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
             thisY -= primaryIntervalHeight;
         }
         // Secondary Below
-        var thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
+        thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
         while (thisY < tonicY + containerHeight / 2) {
             addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
             thisY += primaryIntervalHeight;
         }
         // Secondary Above
-        var thisY = tonicY - secondaryIntervalHeight;
+        thisY = tonicY - secondaryIntervalHeight;
         while (thisY > tonicY - containerHeight / 2) {
             addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
             thisY -= primaryIntervalHeight;
@@ -167,7 +167,7 @@ class Pitch {
 
 
     static intervalsEqual(a, b) {
-        for (var i = 0; i < Math.max(a.length, b.length); i++) {
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
             if (i >= a.length) {
                 if (b[i] != 0) return false;
                 continue;
@@ -197,11 +197,11 @@ class Pitch {
     addToViewport(x, referenceFreq) {
 
         // Add pitch line
-        var thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
+        let thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
         this.htmlPitchElement = addPitchLine(x, x+PITCH_LINE_LEN, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
 
         // Add interval bars
-        for (var dim of this.childDims) {
+        for (let dim of this.childDims) {
             this.htmlIntervalBarElements.push(addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, 1, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid));
         }
     }
@@ -210,7 +210,7 @@ class Pitch {
 class Chord {
     constructor(relativeFreq, root=[0]) {
         this.relativeFreq = relativeFreq;
-        var basePitch = new Pitch(this, root);
+        let basePitch = new Pitch(this, root);
         this.pitches = [basePitch];
         this.uid = "chord-" + newUniqueId();
     }
@@ -221,7 +221,7 @@ class Chord {
      * @returns {Pitch}
      */
     getPitch(pitchVector) {
-        for (var p of this.pitches) {
+        for (let p of this.pitches) {
             if (Pitch.intervalsEqual(p.transformedVector, pitchVector)) return p;
         }
         return null;
@@ -235,19 +235,19 @@ class Chord {
     addPitch(fromVector, dim) {
         fromVector.unshift(0);
         // Check that parent exists
-        var parent = this.getPitch(fromVector);
+        let parent = this.getPitch(fromVector);
         if (!parent) {
             console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`);
             return;
         }
 
         // Check that new pitch doesn't already exist
-        var newPitchVector = [...parent.transformedVector];
+        let newPitchVector = [...parent.transformedVector];
         while (newPitchVector.length <= Math.abs(dim)) {
             newPitchVector.push(0);
         }
         newPitchVector[Math.abs(dim)] += Math.sign(dim);
-        var existingPitch = this.getPitch(newPitchVector)
+        let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
             // Check if the input dim already exists to reach the existing pitch
             if (parent.childDims.includes(dim)) {
@@ -277,13 +277,13 @@ class Chord {
         }
 
         // Add pitch
-        var child = new Pitch(this, newPitchVector, parent);
+        let child = new Pitch(this, newPitchVector, parent);
         parent.associateChild(child, dim);
         this.pitches.push(child);
     }
 
     inputInterval(y, dim) {
-        var pitch = this.findNearestPitch(y);
+        let pitch = this.findNearestPitch(y);
         this.addPitch(pitch.transformedVector.slice(1), dim);
     }
 
@@ -292,10 +292,10 @@ class Chord {
      * @param {number} y 
      */
     findNearestPitch(y) {
-        var minDistance = Infinity;
-        var closestPitch = null;
-        for (var p of this.pitches) {
-            var pitchY = Math.log2(this.relativeFreq * p.getRatio() / C_0) * settings.octaveScale * -1;
+        let minDistance = Infinity;
+        let closestPitch = null;
+        for (let p of this.pitches) {
+            let pitchY = Math.log2(this.relativeFreq * p.getRatio() / C_0) * settings.octaveScale * -1;
             if (Math.abs(pitchY - y - viewportY) < minDistance) {
                 minDistance = Math.abs(pitchY - y - viewportY);
                 closestPitch = p;
@@ -309,19 +309,19 @@ class Chord {
         document.querySelectorAll("." + this.uid).forEach(el => {
             el.remove();
         });
-        for (var p of this.pitches) {
+        for (let p of this.pitches) {
             p.addToViewport(x, this.relativeFreq);
         }
     }
 
 }
 
-var idsInUse = [];
+let idsInUse = [];
 function newUniqueId() {
     const chars = "0123456789abcdefghijklmnopqrstuvwxyz"
     do {
-        var id = "";
-        for (var i = 0; i < 5; i++) {
+        let id = "";
+        for (let i = 0; i < 5; i++) {
             id += chars[Math.round(Math.random()*35)];
         }
     } while (idsInUse.includes(id));
@@ -353,8 +353,8 @@ function menuSelect(arg) {
 
 /** pure val to pitch ratio */
 function getPureInterval(arr) {
-    var product = 1;
-    for (var i = 0; i < arr.length; i++) {
+    let product = 1;
+    for (let i = 0; i < arr.length; i++) {
         product *= PRIMES[i] ** arr[i];
     }
     return product;
@@ -362,8 +362,8 @@ function getPureInterval(arr) {
 
 /** 0D-indexed, shasavistic interval vector to pitch ratio */
 function getTransformedInterval(arr) {
-    var product = 1;
-    for (var i = 0; i < arr.length; i++) {
+    let product = 1;
+    for (let i = 0; i < arr.length; i++) {
         product *= getPureInterval(settings.axes[i]) ** arr[i];
     }
     return product;
@@ -383,7 +383,7 @@ function refitSvgContent() {
 }
 
 function addLine(x1, x2, y1, y2, color, opacity=1, width=settings.keyAreaLineWidth, classes="") {
-    var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    let line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", x1);
     line.setAttribute("x2", x2);
     line.setAttribute("y1", y1);
@@ -397,7 +397,7 @@ function addLine(x1, x2, y1, y2, color, opacity=1, width=settings.keyAreaLineWid
 
 
 function addRhombusLine(x1, x2, y1, y2, color, opacity=1, width=8, classes="") {
-    var line = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    let line = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     line.setAttribute("points", `${x1-width/2},${y1} ${x1+width/2},${y1} ${x2+width/2},${y2} ${x2-width/2},${y2}`);
     line.setAttribute("stroke-width", 0)
     line.setAttribute("fill", color);
@@ -407,7 +407,7 @@ function addRhombusLine(x1, x2, y1, y2, color, opacity=1, width=8, classes="") {
 }
 
 function addCurveLine(x, deform, y1, y2, color, opacity=1, width=8, classes="") {
-    var line = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    let line = document.createElementNS("http://www.w3.org/2000/svg", "path");
     line.setAttribute("d", `
         M ${x-width/2} ${y1}
         l ${width} 0
@@ -432,7 +432,7 @@ function addCurveLine(x, deform, y1, y2, color, opacity=1, width=8, classes="") 
 function addAscentBar(dim, x1, x2, startY, opacity=1, descending=false, classes="ascentBar") {
     const height = Math.log2(getPureInterval(settings.axes[dim])) * settings.octaveScale;
     const defaultWidth = 8;
-    var startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
+    let startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
     if (descending) {
         startY += height;
     }
@@ -441,7 +441,7 @@ function addAscentBar(dim, x1, x2, startY, opacity=1, descending=false, classes=
             // TODO: make this function return 1D interval bar element
             const arrowSize = 14;
             addLine(x1, x1, startY-arrowSize, startY-height, settings.axisColors[dim], 1, 4, classes);
-            var overshoot = Math.SQRT2 * 4/4; // sqrt2 times 1/4 of the width of the lines to create the arrow
+            let overshoot = Math.SQRT2 * 4/4; // sqrt2 times 1/4 of the width of the lines to create the arrow
             addLine(x1-arrowSize, x1+overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
             addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
             break;
@@ -467,11 +467,11 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
 }
 
 
-var previewPitch = null;
-var previewBasePitch = null;
-var previewPitchElement = null;
-var previewBasePitchElement = null;
-var previewIntervalBarElement = null;
+let previewPitch = null;
+let previewBasePitch = null;
+let previewPitchElement = null;
+let previewBasePitchElement = null;
+let previewIntervalBarElement = null;
 
 function setPreviewPitch(x, y) {
     if (previewPitchElement !== null) {
@@ -579,7 +579,7 @@ viewport.addEventListener("click", (event) => {
 });
 
 let keyArea = new KeyArea("my_key", 2, 4, 261.63);
-var chordList = [];
+let chordList = [];
 
 keyArea.addToViewport();
 

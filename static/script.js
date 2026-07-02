@@ -19,6 +19,8 @@ const viewportPaddingX = 50;
 
 viewport.style.backgroundColor = "#676681";
 
+const PITCH_LINE_LEN = 70;
+
 var settings = {
     
     "octaveScale": 120, // TODO: change default ctrl+scroll behavior to zoom
@@ -44,6 +46,8 @@ var settings = {
         "#b5b500",
         "#ed9877"
     ],
+
+    "previewPitchOpacity": 0.5,
 
     // PITCH/INTERVAL-BAR SETTINGS
     "pitchLineWidth": 2,
@@ -155,8 +159,11 @@ class Pitch {
         return getTransformedInterval(this.transformedVector);
     }
 
+    getFrequency() {
+        return this.parentChord.relativeFreq * this.getRatio();
+    }
+
     addToViewport(x, referenceFreq) {
-        const PITCH_LINE_LEN = 70
 
         // Add pitch line
         var thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
@@ -164,7 +171,7 @@ class Pitch {
 
         // Add interval bars
         for (var dim of this.childDims) {
-            this.htmlIntervalBarElements.push(addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid));
+            this.htmlIntervalBarElements.push(addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, 1, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid));
         }
     }
 }
@@ -200,7 +207,6 @@ class Chord {
         var parent = this.getPitch(fromVector);
         if (!parent) {
             console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`);
-            console.log(this.pitches);
             return;
         }
 
@@ -392,7 +398,7 @@ function addCurveLine(x, deform, y1, y2, color, opacity=1, width=8, classes="") 
  * @param {number} startY 
  * @param {boolean} descending 
  */
-function addAscentBar(dim, x1, x2, startY, descending=false, classes="ascentBar") {
+function addAscentBar(dim, x1, x2, startY, opacity=1, descending=false, classes="ascentBar") {
     const height = Math.log2(getPureInterval(settings.axes[dim])) * settings.octaveScale;
     const defaultWidth = 8;
     var startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
@@ -409,17 +415,17 @@ function addAscentBar(dim, x1, x2, startY, descending=false, classes="ascentBar"
             addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
             break;
         case 2:
-            return addLine(x1, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addLine(x1, x1, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 3:
-            return addLine(x2, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addLine(x2, x2, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 4:
-            return addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 5:
-            return addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 6:
-            return addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 7:
-            return addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], 1, defaultWidth, classes);
+            return addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
         default:
             return null;
     }
@@ -430,9 +436,56 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
 }
 
 
+var previewPitch = null;
+var previewPitchElement = null;
+var previewIntervalBarElement = null;
+
+function setPreviewPitch(x, y) {
+    if (previewPitch !== null) {
+        previewPitchElement.remove();
+        previewIntervalBarElement.remove();
+        previewPitch = null;
+    }
+    let chordIndex = findNearestChordIndex(x);
+    if (chordIndex == chordList.length) {
+        let previewPitchVector = [0];
+        while (previewPitchVector.length <= Math.abs(selectedDimension)) {
+            previewPitchVector.push(0);
+        }
+        previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
+        previewPitch = new Pitch(null, previewPitchVector);
+
+        let referenceFreq = 263.61; // TODO: get nearest line in keyArea
+
+        let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
+        let thisX = (CHORD_WIDTH + CHORD_SPACING) * chordIndex + viewportPaddingX;
+        previewPitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
+
+        // Add interval bar
+        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX+PITCH_LINE_LEN, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+    } else {
+        let nearestPitch = chordList[chordIndex].findNearestPitch(y);
+        let previewPitchVector = [...nearestPitch.transformedVector];
+        while (previewPitchVector.length <= Math.abs(selectedDimension)) {
+            previewPitchVector.push(0);
+        }
+        previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
+        previewPitch = new Pitch(null, previewPitchVector, nearestPitch);
+        let referenceFreq = chordList[chordIndex].relativeFreq;
+
+        // Add pitch line
+        let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
+        let thisX = (CHORD_WIDTH + CHORD_SPACING) * chordIndex + viewportPaddingX;
+        previewPitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
+
+        // Add interval bar
+        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX+PITCH_LINE_LEN, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+    }
+}
+
+const CHORD_WIDTH = 50;
+const CHORD_SPACING = 50;
 function findNearestChordIndex(x) {
-    const CHORD_WIDTH = 50;
-    const CHORD_SPACING = 50;
     let index = (x - viewportPaddingX) / (CHORD_WIDTH + CHORD_SPACING);
     if (index > chordList.length) {
         return chordList.length;
@@ -461,23 +514,28 @@ viewport.addEventListener("mousemove", (event) => {
             selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
         }
     }
+
+    setPreviewPitch(event.offsetX, event.offsetY);
 });
 viewportContainer.addEventListener("mouseleave", (event) => {
     document.querySelectorAll(".pitchLine").forEach((el) => {
         el.setAttribute("stroke", settings.pitchLineColor);
         el.setAttribute("stroke-width", settings.pitchLineWidth);
     });
+    if (previewPitch !== null) {
+        previewPitchElement.remove();
+        previewIntervalBarElement.remove();
+        previewPitch = null;
+    }
 })
 viewport.addEventListener("click", (event) => {
     let chordIndex = findNearestChordIndex(event.offsetX);
-    console.log(`chordInex = ${chordIndex}`);
-    console.log(`offsetX = ${event.offsetX}`);
     if (chordIndex === chordList.length) {
         chordList.push(new Chord(261.63));
     } else {
     }
     chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    chordList[chordIndex].addToViewport(chordIndex * 90 + 50);
+    chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
     
     // TODO: (re)select the nearest pitch
 });

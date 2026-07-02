@@ -68,20 +68,51 @@ var settings = {
 }
 
 class KeyArea {
-    constructor(name, primaryAxis, secondaryAxis, tonicPitch, hasTonic=true) {
+    constructor(name, primaryAxis, secondaryAxis, tonicFrequency, hasTonic=true) {
 
         // TODO: allow multiple primary axes and secondary axes
+        // TODO: allow descending secondary axes
         this.name = name;
         this.primaryAxis = primaryAxis;
         this.secondaryAxis = secondaryAxis;
-        this.tonic = tonicPitch;
+        this.tonicFreq = tonicFrequency;
         this.hasTonic = hasTonic;
+    }
+
+    // Return the transformed vector of the nearest line to the y coordinate
+    getNearestLineVector(y) {
+        const tonicY = Math.log2(this.tonicFreq/C_0) * settings.octaveScale * -1;
+        const deltaY = y + viewportY - tonicY; // The parameter y position relative to tonic
+        const primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
+        const secondaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.secondaryAxis])) * settings.octaveScale;
+        const closestPrimaryDist = deltaY / primaryIntervalHeight;
+        const closestSecondaryDist = (deltaY + secondaryIntervalHeight) / primaryIntervalHeight;
+        let closestPrimary = -1 * Math.round(closestPrimaryDist);
+        let closestSecondary = -1 * Math.round(closestSecondaryDist);
+        let normalizedP = Math.abs(closestPrimaryDist) % 1;
+        let normalizedS = Math.abs(closestSecondaryDist) % 1;
+        // TODO: increase efficiency of creation of closestPitch
+        let closestPitch = [];
+        if ((1 - normalizedP) * normalizedP <= (1 - normalizedS) * normalizedS) {
+            for (let _ = 0; _ < this.primaryAxis; _++) {
+                closestPitch.push(0);
+            }
+            closestPitch.push(closestPrimary);
+        } else {
+            for (let _ = 0; _ <= Math.max(this.primaryAxis, this.secondaryAxis); _++) {
+                closestPitch.push(0);
+            }
+            closestPitch[this.primaryAxis] = closestSecondary;
+            closestPitch[this.secondaryAxis] = 1;
+        }
+        // console.log(`viewportY:${viewportY}\ny:${y}\ntonicY:${tonicY}\ndeltaY:${deltaY}`);
+        // console.log(closestPitch);
+        return closestPitch;
     }
 
     addToViewport(minX=0, maxX=2000) {
         // Tonic
-        var tonicY = Math.log2(this.tonic/C_0) * settings.octaveScale * -1;
-        tonicY = Math.round(tonicY * 100) / 100
+        const tonicY = Math.log2(this.tonicFreq/C_0) * settings.octaveScale * -1;
         addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${name}`);
         // Interval Heights
         var primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
@@ -437,14 +468,18 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
 
 
 var previewPitch = null;
+var previewBasePitch = null;
 var previewPitchElement = null;
+var previewBasePitchElement = null;
 var previewIntervalBarElement = null;
 
 function setPreviewPitch(x, y) {
-    if (previewPitch !== null) {
+    if (previewPitchElement !== null) {
         previewPitchElement.remove();
         previewIntervalBarElement.remove();
+        previewBasePitchElement.remove();
         previewPitch = null;
+        previewBasePitch = null;
     }
     let chordIndex = findNearestChordIndex(x);
     if (chordIndex == chordList.length) {
@@ -455,11 +490,13 @@ function setPreviewPitch(x, y) {
         previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
         previewPitch = new Pitch(null, previewPitchVector);
 
-        let referenceFreq = 263.61; // TODO: get nearest line in keyArea
+        let referenceFreq = 261.63 * getTransformedInterval(keyArea.getNearestLineVector(y));
 
+        let baseY = Math.log2(referenceFreq / C_0) * settings.octaveScale * -1;
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
         let thisX = (CHORD_WIDTH + CHORD_SPACING) * chordIndex + viewportPaddingX;
         previewPitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
+        previewBasePitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
 
         // Add interval bar
         previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX+PITCH_LINE_LEN, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
@@ -531,7 +568,8 @@ viewportContainer.addEventListener("mouseleave", (event) => {
 viewport.addEventListener("click", (event) => {
     let chordIndex = findNearestChordIndex(event.offsetX);
     if (chordIndex === chordList.length) {
-        chordList.push(new Chord(261.63));
+
+        chordList.push(new Chord(261.63 * getTransformedInterval(keyArea.getNearestLineVector(event.offsetY))));
     } else {
     }
     chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
@@ -540,7 +578,7 @@ viewport.addEventListener("click", (event) => {
     // TODO: (re)select the nearest pitch
 });
 
-let keyArea = new KeyArea("my_key", 2, 3, 261.63);
+let keyArea = new KeyArea("my_key", 2, 4, 261.63);
 var chordList = [];
 
 keyArea.addToViewport();

@@ -1,5 +1,6 @@
 const viewport = document.getElementById("viewport");
-const containerHeight = document.getElementById("viewport-container").offsetHeight;
+const viewportContainer = document.getElementById("viewport-container");
+const containerHeight = viewportContainer.offsetHeight;
 
 const pitchAxisScale = 1;
 
@@ -13,6 +14,8 @@ var selectedPitch = null; // Hovered over / highlighted pitch
 
 var viewportX = 0;
 var viewportY = 0;
+
+const viewportPaddingX = 50;
 
 viewport.style.backgroundColor = "#676681";
 
@@ -167,9 +170,9 @@ class Pitch {
 }
 
 class Chord {
-    constructor(relativeFreq) {
+    constructor(relativeFreq, root=[0]) {
         this.relativeFreq = relativeFreq;
-        var basePitch = new Pitch(this);
+        var basePitch = new Pitch(this, root);
         this.pitches = [basePitch];
         this.uid = "chord-" + newUniqueId();
     }
@@ -426,35 +429,62 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
     return addLine(x1, x2, y, y, color, opacity, width, classes);
 }
 
+
+function findNearestChordIndex(x) {
+    const CHORD_WIDTH = 50;
+    const CHORD_SPACING = 50;
+    let index = (x - viewportPaddingX) / (CHORD_WIDTH + CHORD_SPACING);
+    if (index > chordList.length) {
+        return chordList.length;
+    }
+    return Math.max(0, Math.floor(index));
+}
+
 viewport.addEventListener("mousemove", (event) => {
-    // TODO: Update the "mousemove" and "mouseout" function to be for a specific chord
-    // TODO: Remove highlight when mouse moves far away vertically or horizontally.
-    selectedPitch = myChord.findNearestPitch(event.offsetY);
-    if (selectedPitch) {
-        document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
-            el.setAttribute("stroke", settings.pitchLineColor);
-            el.setAttribute("stroke-width", settings.pitchLineWidth);
-        });
-        selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineSelectedColor);
-        selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
+    // TODO: don't querySelectorAll to remove pitch line highlight (also in "mouseleave" event)
+    document.querySelectorAll(".pitchLine").forEach((el) => {
+        el.setAttribute("stroke", settings.pitchLineColor);
+        el.setAttribute("stroke-width", settings.pitchLineWidth);
+    });
+    let chordIndex = findNearestChordIndex(event.offsetX);
+    if (chordIndex === chordList.length) {
+
+    } else {
+        let chord = chordList[chordIndex];
+        selectedPitch = chord.findNearestPitch(event.offsetY);
+        if (selectedPitch) {
+            document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
+                el.setAttribute("stroke", settings.pitchLineColor);
+                el.setAttribute("stroke-width", settings.pitchLineWidth);
+            });
+            selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineSelectedColor);
+            selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
+        }
     }
 });
-viewport.addEventListener("mouseout", (event) => {
-    document.querySelectorAll("." + myChord.uid + ".pitchLine").forEach((el) => {
-            el.setAttribute("stroke", settings.pitchLineColor);
-            el.setAttribute("stroke-width", settings.pitchLineWidth);
-        });
+viewportContainer.addEventListener("mouseleave", (event) => {
+    document.querySelectorAll(".pitchLine").forEach((el) => {
+        el.setAttribute("stroke", settings.pitchLineColor);
+        el.setAttribute("stroke-width", settings.pitchLineWidth);
+    });
 })
 viewport.addEventListener("click", (event) => {
-
-    myChord.inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    myChord.addToViewport(50); // TODO: REPLACE TEMPORARY OPERATION
+    let chordIndex = findNearestChordIndex(event.offsetX);
+    console.log(`chordInex = ${chordIndex}`);
+    console.log(`offsetX = ${event.offsetX}`);
+    if (chordIndex === chordList.length) {
+        chordList.push(new Chord(261.63));
+    } else {
+    }
+    chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
+    chordList[chordIndex].addToViewport(chordIndex * 90 + 50);
+    
+    // TODO: (re)select the nearest pitch
 });
 
-let cMajor = new KeyArea("my_key", 2, 3, 261.63);
-cMajor.addToViewport();
-let myChord = new Chord(261.63);
-myChord.addPitch([0], 2);
+let keyArea = new KeyArea("my_key", 2, 3, 261.63);
+var chordList = [];
 
-myChord.addToViewport(50);
+keyArea.addToViewport();
+
 refitSvgContent();

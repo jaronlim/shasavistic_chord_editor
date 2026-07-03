@@ -151,16 +151,9 @@ class Pitch {
      * @param {Array<number>} transformedVector Pitch coordinate using octave-scaled basis vectors
      * @param {Pitch} relativePitch The Pitch that this one should reference as its parent
      */
-    constructor(parentChord=null, transformedVector=[0], relativePitch=null) {
+    constructor(parentChord=null, transformedVector=[0]) {
         this.parentChord = parentChord;
         this.transformedVector = transformedVector;
-        if (relativePitch===null) {
-            this.parentPitches = [];
-        } else {
-            this.parentPitches = [relativePitch];
-        }
-        this.childPitches = [];
-        this.childDims = [];
         this.htmlPitchElement = null;
         this.htmlIntervalBarElements = [];
     }
@@ -181,11 +174,6 @@ class Pitch {
         return true;
     }
 
-    associateChild(child, dim) {
-        this.childPitches.push(child);
-        this.childDims.push(dim);
-    }
-
     getRatio() {
         return getTransformedInterval(this.transformedVector);
     }
@@ -195,15 +183,28 @@ class Pitch {
     }
 
     addToViewport(x, referenceFreq) {
-
         // Add pitch line
         let thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
         this.htmlPitchElement = addPitchLine(x, x+PITCH_LINE_LEN, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+    }
+}
 
-        // Add interval bars
-        for (let dim of this.childDims) {
-            this.htmlIntervalBarElements.push(addAscentBar(Math.abs(dim), x, x+PITCH_LINE_LEN, thisY, 1, Math.sign(dim) === -1, "ascentBar " + this.parentChord.uid));
-        }
+class IntervalBar {
+    constructor(parentChord, pitchAbove, pitchBelow, dim) {
+        this.pitchAbove = pitchAbove;
+        this.pitchBelow = pitchBelow;
+        this.dim = Math.abs(dim);
+        this.parentChord = parentChord;
+        this.htmlBarElement = null;
+    }
+
+    hasPitch(p) {
+        return Pitch.intervalsEqual(p.transformedVector, this.pitchAbove.transformedVector) || Pitch.intervalsEqual(p.transformedVector, this.pitchBelow.transformedVector);
+    }
+
+    addToViewport(x, referenceFreq) {
+        let thisY = Math.log2(referenceFreq * this.pitchBelow.getRatio() / C_0) * settings.octaveScale * -1;
+        this.htmlBarElement = addAscentBar(Math.abs(this.dim), x, x+PITCH_LINE_LEN, thisY, 1, false, "ascentBar " + this.parentChord.uid);
     }
 }
 
@@ -212,6 +213,7 @@ class Chord {
         this.relativeFreq = relativeFreq;
         let basePitch = new Pitch(this, root);
         this.pitches = [basePitch];
+        this.intervalBars = [];
         this.uid = "chord-" + newUniqueId();
     }
     
@@ -227,6 +229,16 @@ class Chord {
         return null;
     }
 
+    getIntervalBar(pitch1, pitch2) {
+        for (b of this.intervalBars) {
+            if ((Pitch.intervalsEqual(b.pitchAbove, pitch1) && Pitch.intervalsEqual(b.pitchBelow, pitch2))
+            || (Pitch.intervalsEqual(b.pitchBelow, pitch1) && Pitch.intervalsEqual(b.pitchAbove, pitch2))) {
+                return b;
+            }
+        }
+        return null;
+    }
+
     /**
      * Add a pitch to the chord, relative to another pitch
      * @param {Array<number>} fromVector The relative pitch on which to stack the new interval (val: starts at prime 2)
@@ -236,10 +248,7 @@ class Chord {
         fromVector.unshift(0);
         // Check that parent exists
         let parent = this.getPitch(fromVector);
-        if (!parent) {
-            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`);
-            return;
-        }
+        if (!parent) { console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`); return; }
 
         // Check that new pitch doesn't already exist
         let newPitchVector = [...parent.transformedVector];
@@ -249,37 +258,78 @@ class Chord {
         newPitchVector[Math.abs(dim)] += Math.sign(dim);
         let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
-            // Check if the input dim already exists to reach the existing pitch
-            if (parent.childDims.includes(dim)) {
-                // Remove the existing pitch if it 
-                parent.childDims.filter((d) => {d !== dim;});
-                for (let i = 0; i < parent.childDims.length; i++) {
-                    if (parent.childDims[i] == dim) {
-                        parent.childDims.splice(i, 1);
-                        existingPitch.parentPitches.splice(existingPitch.parentPitches.indexOf(parent), 1);
-                        break;
+            // Check if the pitch bar already exists
+            let existingBar = null;
+            let i = 0;
+            while (i < this.intervalBars.length) {
+                let b = this.intervalBars[i];
+                if (b.hasPitch(parent) && b.hasPitch(existingPitch)) {
+                    existingBar = b;
+                    break;
+                }
+                i++;
+            }
+            if (existingBar) {
+                // Remove bar
+                existingBar.htmlBarElement.remove();
+                this.intervalBars.splice(i, 1);
+                // Remove pitches if orphaned
+                let pitchAboveOrphaned = true;
+                let pitchBelowOrphaned = true;
+                for (let b of this.intervalBars) {
+                    if (b.hasPitch(existingBar.pitchAbove)) {
+                        pitchAboveOrphaned = false;
+                    }
+                    if (b.hasPitch(existingBar.pitchBelow)) {
+                        pitchBelowOrphaned = false;
                     }
                 }
-                if (existingPitch.childDims.length == 0 && existingPitch.parentPitches.length == 0) {
-                    for (let i = 0; i < this.pitches.length; i++) {
-                        if (Pitch.intervalsEqual(this.pitches[i].transformedVector, existingPitch.transformedVector)) {
-                            this.pitches.splice(i, 1);
-                            break;
+                if (pitchAboveOrphaned || pitchBelowOrphaned) {
+                    for (let j = 0; j < this.pitches.length; j++) {
+                        if (pitchAboveOrphaned && this.pitches[j] == existingBar.pitchAbove) {
+                            existingBar.pitchAbove.htmlPitchElement.remove();
+                            this.pitches.splice(j, 1);
+                            j--;
+                        } else if (pitchBelowOrphaned && this.pitches[j] == existingBar.pitchBelow) {
+                            existingBar.pitchBelow.htmlPitchElement.remove();
+                            this.pitches.splice(j, 1);
+                            j--;
+                        }
+                    }
+                    
+                    if (this.pitches.length === 0) {
+                        for (let i = 0; i < chordList.length; i++) {
+                            if (chordList[i].uid === this.uid) {
+                                chordList.splice(i, 1);
+                                return 1;
+                            }
                         }
                     }
                 }
             } else {
-                // Add the requested dimension
-                parent.childDims.push(dim);
-                existingPitch.parentPitches.push(parent);
+                // Add bar
+                let bar;
+                if (dim < 0) {
+                    bar = new IntervalBar(this, parent, existingPitch, dim);
+                } else {
+                    bar = new IntervalBar(this, existingPitch, parent, dim);
+                }
+                this.intervalBars.push(bar);
             }
-            return;
+            return 0;
+        } else {
+            // Add pitch and interval bar
+            let child = new Pitch(this, newPitchVector);
+            this.pitches.push(child);
+            let bar;
+            if (dim < 0) {
+                bar = new IntervalBar(this, parent, child, dim);
+            } else {
+                bar = new IntervalBar(this, child, parent, dim);
+            }
+            this.intervalBars.push(bar);
+            return 0;
         }
-
-        // Add pitch
-        let child = new Pitch(this, newPitchVector, parent);
-        parent.associateChild(child, dim);
-        this.pitches.push(child);
     }
 
     inputInterval(y, dim) {
@@ -311,6 +361,9 @@ class Chord {
         });
         for (let p of this.pitches) {
             p.addToViewport(x, this.relativeFreq);
+        }
+        for (let b of this.intervalBars) {
+            b.addToViewport(x, this.relativeFreq);
         }
     }
 
@@ -510,7 +563,6 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
 
 
 let previewPitch = null;
-let previewBasePitch = null;
 let previewPitchElement = null;
 let previewBasePitchElement = null;
 let previewIntervalBarElement = null;
@@ -521,7 +573,7 @@ function setPreviewPitch(x, y) {
         previewIntervalBarElement.remove();
         previewBasePitchElement.remove();
         previewPitch = null;
-        previewBasePitch = null;
+        previewIntervalBar = null;
     }
     let chordIndex = findNearestChordIndex(x);
     if (chordIndex == chordList.length) {
@@ -531,8 +583,9 @@ function setPreviewPitch(x, y) {
         }
         previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
         previewPitch = new Pitch(null, previewPitchVector);
-
-        let referenceFreq = 261.63 * getTransformedInterval(keyArea.getNearestLineVector(y));
+        
+        let nearestLineVector = keyArea.getNearestLineVector(y);
+        let referenceFreq = 261.63 * getTransformedInterval(nearestLineVector);
 
         let baseY = Math.log2(referenceFreq / C_0) * settings.octaveScale * -1;
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
@@ -549,7 +602,7 @@ function setPreviewPitch(x, y) {
             previewPitchVector.push(0);
         }
         previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
-        previewPitch = new Pitch(null, previewPitchVector, nearestPitch);
+        previewPitch = new Pitch(null, previewPitchVector);
         let referenceFreq = chordList[chordIndex].relativeFreq;
 
         // Add pitch line
@@ -606,7 +659,6 @@ viewportContainer.addEventListener("mouseleave", (event) => {
         previewIntervalBarElement.remove();
         previewBasePitchElement.remove();
         previewPitch = null;
-        previewBasePitch = null;
     }
 })
 viewport.addEventListener("click", (event) => {
@@ -616,13 +668,20 @@ viewport.addEventListener("click", (event) => {
         chordList.push(new Chord(261.63 * getTransformedInterval(keyArea.getNearestLineVector(event.offsetY))));
     } else {
     }
-    chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
+    let input = chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
+    if (input === 0) {
+        chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
+    } else {
+        while (chordIndex < chordList.length) {
+            chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
+            chordIndex++;
+        }
+    }
     
     // TODO: (re)select the nearest pitch
 });
 
-let keyArea = new KeyArea("my_key", 2, 4, 261.63);
+let keyArea = new KeyArea("my_key", 2, 3, 261.63);
 let chordList = [];
 
 keyArea.addToViewport();

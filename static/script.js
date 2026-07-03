@@ -319,8 +319,9 @@ class Chord {
 let idsInUse = [];
 function newUniqueId() {
     const chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+    let id;
     do {
-        let id = "";
+        id = "";
         for (let i = 0; i < 5; i++) {
             id += chars[Math.round(Math.random()*35)];
         }
@@ -422,6 +423,46 @@ function addCurveLine(x, deform, y1, y2, color, opacity=1, width=8, classes="") 
     return viewport.appendChild(line);
 }
 
+let last1dSymbolOctaveScale = settings.octaveScale;
+build1dAsentSymbol();
+function build1dAsentSymbol() {
+    const defs = viewport.querySelector("defs");
+    const height = Math.log2(getPureInterval(settings.axes[1])) * settings.octaveScale;
+    const arrowSize = 10;
+    const arrowStrokeWidth = 2;
+    const barWidth = 4;
+    const overshoot = Math.SQRT2 * arrowStrokeWidth/4;
+    let symbol = document.createElementNS("http://www.w3.org/2000/svg", "symbol");
+    symbol.setAttribute("id", "1d-bar-ascent-symbol");
+    symbol.setAttribute("viewBox", `${- arrowSize - overshoot} ${-height} ${2 * (arrowSize + overshoot)} ${height}`);
+    symbol.setAttribute("preserveAspectRatio", "xMinYMin");
+    let bar = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    bar.setAttribute("x1", 0);
+    bar.setAttribute("x2", 0);
+    bar.setAttribute("y1", -arrowSize);
+    bar.setAttribute("y2", -height);
+    bar.setAttribute("stroke", settings.axisColors[1]);
+    bar.setAttribute("stroke-width", barWidth);
+    symbol.appendChild(bar);
+    let arrowL = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    arrowL.setAttribute("x1", -arrowSize);
+    arrowL.setAttribute("x2", overshoot);
+    arrowL.setAttribute("y1", 0);
+    arrowL.setAttribute("y2", -arrowSize-overshoot);
+    arrowL.setAttribute("stroke", "white");
+    arrowL.setAttribute("stroke-width", arrowStrokeWidth);
+    symbol.appendChild(arrowL);
+    let arrowR = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    arrowR.setAttribute("x1", arrowSize);
+    arrowR.setAttribute("x2", -overshoot);
+    arrowR.setAttribute("y1", 0);
+    arrowR.setAttribute("y2", -arrowSize-overshoot);
+    arrowR.setAttribute("stroke", "white");
+    arrowR.setAttribute("stroke-width", arrowStrokeWidth);
+    symbol.appendChild(arrowR);
+    defs.appendChild(symbol);
+}
+
 /**
  * Add a colored interval bar
  * @param {number} dim
@@ -438,12 +479,13 @@ function addAscentBar(dim, x1, x2, startY, opacity=1, descending=false, classes=
     }
     switch (dim) {
         case 1:
-            // TODO: make this function return 1D interval bar element
-            const arrowSize = 14;
-            addLine(x1, x1, startY-arrowSize, startY-height, settings.axisColors[dim], 1, 4, classes);
-            let overshoot = Math.SQRT2 * 4/4; // sqrt2 times 1/4 of the width of the lines to create the arrow
-            addLine(x1-arrowSize, x1+overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
-            addLine(x1+arrowSize, x1-overshoot, startY, startY-arrowSize-overshoot, "white", 1, 4, classes);
+            let bar = document.createElementNS("http://www.w3.org/2000/svg", "use");
+            bar.setAttribute("href", "#1d-bar-ascent-symbol");
+            bar.setAttribute("x", x1);
+            bar.setAttribute("y", startY - Math.log2(getPureInterval(settings.axes[1])) * settings.octaveScale);
+            bar.setAttribute("height", Math.log2(getPureInterval(settings.axes[1])) * settings.octaveScale);
+            bar.setAttribute("opacity", opacity);
+            return viewport.appendChild(bar);
             break;
         case 2:
             return addLine(x1, x1, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);

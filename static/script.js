@@ -604,7 +604,9 @@ viewportContainer.addEventListener("mouseleave", (event) => {
     if (previewPitch !== null) {
         previewPitchElement.remove();
         previewIntervalBarElement.remove();
+        previewBasePitchElement.remove();
         previewPitch = null;
+        previewBasePitch = null;
     }
 })
 viewport.addEventListener("click", (event) => {

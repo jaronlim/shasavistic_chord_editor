@@ -51,7 +51,7 @@ let settings = {
     "pitchLineWidth": 2,
     "pitchLineColor": "white",
     "pitchLineSelectedWidth": 4,
-    "pitchLineSelectedColor": "#fbff00",
+    "pitchLineSelectedColor": "white",
 
     // KEY AREA SETTINGS
     "tonicLineWidth":  2,
@@ -626,18 +626,18 @@ function findNearestChordIndex(x) {
     return Math.max(0, Math.floor(index));
 }
 
-viewport.addEventListener("mousemove", (event) => {
+function setSelectedPitch(x, y) {
     // TODO: don't querySelectorAll to remove pitch line highlight (also in "mouseleave" event)
     document.querySelectorAll(".pitchLine").forEach((el) => {
         el.setAttribute("stroke", settings.pitchLineColor);
         el.setAttribute("stroke-width", settings.pitchLineWidth);
     });
-    let chordIndex = findNearestChordIndex(event.offsetX);
+    let chordIndex = findNearestChordIndex(x);
     if (chordIndex === chordList.length) {
 
     } else {
         let chord = chordList[chordIndex];
-        selectedPitch = chord.findNearestPitch(event.offsetY);
+        selectedPitch = chord.findNearestPitch(y);
         if (selectedPitch) {
             document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
                 el.setAttribute("stroke", settings.pitchLineColor);
@@ -647,7 +647,10 @@ viewport.addEventListener("mousemove", (event) => {
             selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
         }
     }
+}
 
+viewport.addEventListener("mousemove", (event) => {
+    setSelectedPitch(event.offsetX, event.offsetY)
     setPreviewPitch(event.offsetX, event.offsetY);
 });
 viewportContainer.addEventListener("mouseleave", (event) => {
@@ -679,7 +682,8 @@ viewport.addEventListener("click", (event) => {
         }
     }
     
-    // TODO: (re)select the nearest pitch
+    setSelectedPitch(event.offsetX, event.offsetY);
+    setPreviewPitch(event.offsetX, event.offsetY);
 });
 
 let keyArea = new KeyArea("my_key", 2, 3, 261.63);

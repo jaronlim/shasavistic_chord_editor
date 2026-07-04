@@ -392,25 +392,26 @@ function newUniqueId() {
     return id;
 }
 
-function menuSelect(arg) {
-    switch (arg[0]) {
-        case 'A':
-            selectedDimension = arg[1];
+function menuSelect(buttonType, arg="") {
+    switch (buttonType) {
+        case "dim":
+            selectedDimension = arg;
             document.querySelectorAll(".axis-button").forEach((el) => {
                 el.classList.remove("selected-button");
             });
-            document.querySelector(`#button-${arg.slice(1)}`).classList.add("selected-button");
+            document.querySelector(`#button-${arg}d`).classList.add("selected-button");
             break;
-        case 'D':
-            selectedDirection = arg[1] === "a"? 1:-1;
+        case "dir":
+            selectedDirection = arg;
             document.querySelectorAll(".direction-button").forEach((el) => {
                 el.classList.remove("selected-button");
             });
-            document.querySelector(`#button-${arg.slice(1)}`).classList.add("selected-button");
+            document.querySelector(`#button-${arg === 1? "ascent" : "descent"}`).classList.add("selected-button");
             break;
         default:
             console.warn("Failed to update a menu button!");
             break;
+
     }
 }
 
@@ -701,12 +702,12 @@ viewport.addEventListener("click", (event) => {
 document.addEventListener("keypress", (event) => {
     let needsPreviewPitchRedraw = false;
     if (settings.hotkeys.selectDimension.includes(event.key)) {
-        menuSelect(`A${settings.hotkeys.selectDimension.indexOf(event.key)}d`);
+        menuSelect("dim", settings.hotkeys.selectDimension.indexOf(event.key));
         needsPreviewPitchRedraw = true;
     }
 
-    if (event.key === settings.hotkeys.selectAscent) { menuSelect("Dascent"); needsPreviewPitchRedraw = true; }
-    if (event.key === settings.hotkeys.selectDescent) { menuSelect("Ddescent"); needsPreviewPitchRedraw = true; }
+    if (event.key === settings.hotkeys.selectAscent) { menuSelect("dir", 1); needsPreviewPitchRedraw = true; }
+    if (event.key === settings.hotkeys.selectDescent) { menuSelect("dir", -1); needsPreviewPitchRedraw = true; }
 
 
     if (needsPreviewPitchRedraw) {

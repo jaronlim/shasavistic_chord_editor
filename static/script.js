@@ -62,6 +62,10 @@ let settings = {
     "primaryLineOpacity": 0.4,
     "secondaryLineOpacity": 0.3,
 
+    // CHORD RENDERING SETTINGS
+    "chordWidth": 70,
+    "chordSpacing": 45,
+
     // TODO: add a setting to automatically use blue pitch lines for chord extensions
 
     // TODO: add setting to show/hide scroll bar
@@ -185,7 +189,7 @@ class Pitch {
     addToViewport(x, referenceFreq) {
         // Add pitch line
         let thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
-        this.htmlPitchElement = addPitchLine(x, x+PITCH_LINE_LEN, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+        this.htmlPitchElement = addPitchLine(x, x + settings.chordWidth, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
     }
 }
 
@@ -204,7 +208,7 @@ class IntervalBar {
 
     addToViewport(x, referenceFreq) {
         let thisY = Math.log2(referenceFreq * this.pitchBelow.getRatio() / C_0) * settings.octaveScale * -1;
-        this.htmlBarElement = addAscentBar(Math.abs(this.dim), x, x+PITCH_LINE_LEN, thisY, 1, false, "ascentBar " + this.parentChord.uid);
+        this.htmlBarElement = addAscentBar(Math.abs(this.dim), x, x + settings.chordWidth, thisY, 1, false, "ascentBar " + this.parentChord.uid);
     }
 }
 
@@ -589,12 +593,12 @@ function setPreviewPitch(x, y) {
 
         let baseY = Math.log2(referenceFreq / C_0) * settings.octaveScale * -1;
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
-        let thisX = (CHORD_WIDTH + CHORD_SPACING) * chordIndex + viewportPaddingX;
-        previewPitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
-        previewBasePitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
+        let thisX = (settings.chordWidth + settings.chordSpacing) * chordIndex + viewportPaddingX;
+        previewPitchElement = addPitchLine(thisX, thisX + settings.chordWidth, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
+        previewBasePitchElement = addPitchLine(thisX, thisX + settings.chordWidth, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
 
         // Add interval bar
-        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX+PITCH_LINE_LEN, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
     } else {
         let nearestPitch = chordList[chordIndex].findNearestPitch(y);
         let previewPitchVector = [...nearestPitch.transformedVector];
@@ -607,18 +611,16 @@ function setPreviewPitch(x, y) {
 
         // Add pitch line
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
-        let thisX = (CHORD_WIDTH + CHORD_SPACING) * chordIndex + viewportPaddingX;
-        previewPitchElement = addPitchLine(thisX, thisX+PITCH_LINE_LEN, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
+        let thisX = (settings.chordWidth + settings.chordSpacing) * chordIndex + viewportPaddingX;
+        previewPitchElement = addPitchLine(thisX, thisX + settings.chordWidth, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
 
         // Add interval bar
-        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX+PITCH_LINE_LEN, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
     }
 }
 
-const CHORD_WIDTH = 50;
-const CHORD_SPACING = 50;
 function findNearestChordIndex(x) {
-    let index = (x - viewportPaddingX) / (CHORD_WIDTH + CHORD_SPACING);
+    let index = (x - viewportPaddingX) / (settings.chordWidth + settings.chordSpacing);
     if (index > chordList.length) {
         return chordList.length;
     }
@@ -670,10 +672,10 @@ viewport.addEventListener("click", (event) => {
     }
     let input = chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
     if (input === 0) {
-        chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
+        chordList[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {
         while (chordIndex < chordList.length) {
-            chordList[chordIndex].addToViewport(chordIndex * (CHORD_WIDTH + CHORD_SPACING) + viewportPaddingX);
+            chordList[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
             chordIndex++;
         }
     }

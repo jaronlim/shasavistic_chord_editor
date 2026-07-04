@@ -45,6 +45,13 @@ let settings = {
         "#ed9877"
     ],
 
+    "hotkeys": {
+        "selectDimension": ["", "1", "2", "3", "4", "5", "6", "7"],
+
+        "selectAscent": "a",
+        "selectDescent": "d",
+    },
+
     "previewPitchOpacity": 0.5,
 
     // PITCH/INTERVAL-BAR SETTINGS
@@ -645,11 +652,16 @@ function setSelectedPitch(x, y) {
             });
             selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineSelectedColor);
             selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
-        }
+        }   
     }
 }
 
+let mouseX = 0;
+let mouseY = 0;
+
 viewport.addEventListener("mousemove", (event) => {
+    mouseX = event.offsetX;
+    mouseY = event.offsetY;
     setSelectedPitch(event.offsetX, event.offsetY)
     setPreviewPitch(event.offsetX, event.offsetY);
 });
@@ -682,8 +694,25 @@ viewport.addEventListener("click", (event) => {
         }
     }
     
-    setSelectedPitch(event.offsetX, event.offsetY);
-    setPreviewPitch(event.offsetX, event.offsetY);
+    setSelectedPitch(mouseX, mouseY);
+    setPreviewPitch(mouseX, mouseY);
+});
+
+document.addEventListener("keypress", (event) => {
+    let needsPreviewPitchRedraw = false;
+    if (settings.hotkeys.selectDimension.includes(event.key)) {
+        menuSelect(`A${settings.hotkeys.selectDimension.indexOf(event.key)}d`);
+        needsPreviewPitchRedraw = true;
+    }
+
+    if (event.key === settings.hotkeys.selectAscent) { menuSelect("Dascent"); needsPreviewPitchRedraw = true; }
+    if (event.key === settings.hotkeys.selectDescent) { menuSelect("Ddescent"); needsPreviewPitchRedraw = true; }
+
+
+    if (needsPreviewPitchRedraw) {
+        setSelectedPitch(mouseX, mouseY);
+        setPreviewPitch(mouseX, mouseY);
+    }
 });
 
 let keyArea = new KeyArea("my_key", 2, 3, 261.63);

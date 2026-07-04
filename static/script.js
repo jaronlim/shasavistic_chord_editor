@@ -206,7 +206,7 @@ class IntervalBar {
 
     addToViewport(x, referenceFreq) {
         let thisY = Math.log2(referenceFreq * this.pitchBelow.getRatio() / C_0) * settings.octaveScale * -1;
-        this.htmlBarElement = addAscentBar(Math.abs(this.dim), x, x + settings.chordWidth, thisY, 1, false, "ascentBar " + this.parentChord.uid);
+        this.htmlBarElement = addIntervalBar(Math.abs(this.dim), x, x + settings.chordWidth, thisY, 1, false, "intervalBar " + this.parentChord.uid);
     }
 }
 
@@ -525,7 +525,7 @@ function build1dAsentSymbol() {
  * @param {number} startY 
  * @param {boolean} descending 
  */
-function addAscentBar(dim, x1, x2, startY, opacity=1, descending=false, classes="ascentBar") {
+function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classes="intervalBar") {
     const height = Math.log2(getPureInterval(settings.axes[dim])) * settings.octaveScale;
     const defaultWidth = 8;
     let startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
@@ -596,7 +596,7 @@ function setPreviewPitch(x, y) {
         previewBasePitchElement = addPitchLine(thisX, thisX + settings.chordWidth, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
 
         // Add interval bar
-        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     } else {
         let nearestPitch = chordList[chordIndex].findNearestPitch(y);
         let previewPitchVector = [...nearestPitch.transformedVector];
@@ -613,7 +613,7 @@ function setPreviewPitch(x, y) {
         previewPitchElement = addPitchLine(thisX, thisX + settings.chordWidth, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
 
         // Add interval bar
-        previewIntervalBarElement = addAscentBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "ascentBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     }
 }
 

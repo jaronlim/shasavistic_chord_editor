@@ -540,6 +540,7 @@ function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classe
             bar.setAttribute("y", startY - Math.log2(getPureInterval(settings.axes[1])) * settings.octaveScale);
             bar.setAttribute("height", Math.log2(getPureInterval(settings.axes[1])) * settings.octaveScale);
             bar.setAttribute("opacity", opacity);
+            bar.setAttribute("class", classes);
             return viewport.appendChild(bar);
             break;
         case 2:

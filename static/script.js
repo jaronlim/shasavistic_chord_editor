@@ -267,7 +267,38 @@ class Chord {
         newPitchVector[Math.abs(dim)] += Math.sign(dim);
         let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
-            // Check if the pitch bar already exists
+            // In the case of 0D, remove all associated interval bars
+            if (dim === 0) {
+                // Remove bars
+                for (let i = 0; i < this.intervalBars.length; i++) {
+                    let bar = this.intervalBars[i];
+                    if (bar.hasPitch(parent)) {
+                        this.intervalBars.splice(i, 1);
+                        i--;
+                    }
+                }
+                // Remove pitch
+                for (let i = 0; i < this.pitches.length; i++) {
+                    if (this.pitches[i] === parent) {
+                        this.pitches[i].htmlPitchElement.remove();
+                        this.pitches.splice(i, 1);
+                        break;
+                    }
+                }
+
+                // Delete chord if empty
+                if (this.pitches.length === 0) {
+                    for (let i = 0; i < chordList.length; i++) {
+                        if (chordList[i].uid === this.uid) {
+                            chordList.splice(i, 1);
+                            return 1;
+                        }
+                    }
+                }
+                return 0;
+            }
+
+            // Check if the interval bar already exists
             let existingBar = null;
             let i = 0;
             while (i < this.intervalBars.length) {
@@ -280,8 +311,9 @@ class Chord {
             }
             if (existingBar) {
                 // Remove bar
-                existingBar.htmlBarElement.remove();
+                if(existingBar.htmlBarElement) {existingBar.htmlBarElement.remove();}
                 this.intervalBars.splice(i, 1);
+
                 // Remove pitches if orphaned
                 let pitchAboveOrphaned = true;
                 let pitchBelowOrphaned = true;
@@ -306,6 +338,7 @@ class Chord {
                         }
                     }
                     
+                    // Delete chord if empty (duplicated above -> TODO: clean up)
                     if (this.pitches.length === 0) {
                         for (let i = 0; i < chordList.length; i++) {
                             if (chordList[i].uid === this.uid) {
@@ -581,7 +614,7 @@ let previewIntervalBarElement = null;
 function setPreviewPitch(x, y) {
     if (previewPitchElement !== null) {
         previewPitchElement.remove();
-        previewIntervalBarElement.remove();
+        if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
         previewBasePitchElement.remove();
         previewPitch = null;
         previewIntervalBar = null;
@@ -673,20 +706,22 @@ viewportContainer.addEventListener("mouseleave", (event) => {
     });
     if (previewPitch !== null) {
         previewPitchElement.remove();
-        previewIntervalBarElement.remove();
+        if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
         previewBasePitchElement.remove();
         previewPitch = null;
     }
 })
 viewport.addEventListener("click", (event) => {
     let chordIndex = findNearestChordIndex(event.offsetX);
+    let addedChord = false;
     if (chordIndex === chordList.length) {
-
         chordList.push(new Chord(261.63 * getTransformedInterval(keyArea.getNearestLineVector(event.offsetY))));
-    } else {
+        addedChord = true;
     }
-    let input = chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    if (input === 0) {
+    if (!(selectedDimension === 0 && addedChord)) {
+        chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
+    }
+    if (chordIndex === chordList.length - 1) {
         chordList[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {
         while (chordIndex < chordList.length) {

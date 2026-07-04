@@ -46,7 +46,7 @@ let settings = {
     ],
 
     "hotkeys": {
-        "selectDimension": ["", "1", "2", "3", "4", "5", "6", "7"],
+        "selectDimension": ["`", "1", "2", "3", "4", "5", "6", "7"],
 
         "selectAscent": "a",
         "selectDescent": "d",

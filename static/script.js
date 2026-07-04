@@ -19,8 +19,6 @@ const viewportPaddingX = 50;
 
 viewport.style.backgroundColor = "#676681";
 
-const PITCH_LINE_LEN = 70;
-
 let settings = {
     
     "octaveScale": 120, // TODO: change default ctrl+scroll behavior to zoom

@@ -2,6 +2,8 @@ const viewport = document.getElementById("viewport");
 const viewportContainer = document.getElementById("viewport-container");
 const containerHeight = viewportContainer.offsetHeight;
 
+const keyAreasViewportGroup = document.getElementById("keyAreas");
+
 const pitchAxisScale = 1;
 
 const PRIMES = [2, 3, 5, 7, 11, 13, 17];
@@ -14,6 +16,8 @@ let selectedPitch = null; // Hovered over / highlighted pitch
 
 let viewportX = 0;
 let viewportY = 0;
+let viewportWidth = 0;
+let viewportHeight = 0;
 
 const viewportPaddingX = 50;
 
@@ -66,6 +70,8 @@ let settings = {
     "tonicLineOpacity": 0.5,
     "primaryLineOpacity": 0.4,
     "secondaryLineOpacity": 0.3,
+    "leftPadding": 50,
+    "rightPadding": 50,
 
     // CHORD RENDERING SETTINGS
     "chordWidth": 70,
@@ -77,14 +83,13 @@ let settings = {
 }
 
 class Project {
-    constructor(title="untitled", description="", tuning="") {
+    constructor(title="untitled", description="") {
         this.meta = {
             "title": title,
             "description": description,
-            "tuning": tuning,
         }
         this.referenceFreq = 261.63;
-        this.sections = [];
+        this.sections = [new Section(0, new KeyArea(2, 3, 261.63))];
     }
 
     addSection(section) {
@@ -94,17 +99,55 @@ class Project {
     insertSection(section, index) {
         this.sections.splice(index, 0, section);
     }
+
+    // Return the Section that currently occupies the given x position
+    getSectionAt(x) {
+        if (x < 0) return null;
+        let sum;
+        for (let section of this.sections) {
+            sum += section.getWidth();
+            if (x < sum) return section;
+        }
+        return this.sections[this.sections.length - 1];
+    }
+
+    updateViewport() {
+        let x = 0;
+        for (let section of this.sections) {
+            section.addToViewport(x);
+            x += section.getWidth();
+        }
+    }
 }
 
 class Section {
-    /**
-     * 
+    /** Create a new Section in the editor, usually containing a key and some chords
      * @param {KeyArea | null} keyArea 
      * @param {Array<Chord>} chords 
      */
-    constructor(keyArea=null, chords=[]) {
+    constructor(startX, keyArea=null, chords=[]) {
+        this.leftPadding = settings.leftPadding;
+        this.rightPadding = settings.rightPadding;
         this.keyArea = keyArea;
         this.chords = chords;
+        this.startX = startX;
+    }
+
+    setStartX(newX) {
+        startX = newX;
+    }
+
+    getWidth() {
+        let sum = 0;
+        for (let chord of this.chords) {
+            sum += chord.getWidth() + settings.chordSpacing;
+        }
+        return sum + this.leftPadding + this.rightPadding;
+    }
+
+    refitContent() {
+        this.keyArea.redefineXBounds(this.startX, this.startX + this.getWidth() + settings.chordWidth);
+        // TODO: refit vertically
     }
 
     setKeyArea(keyArea) {
@@ -112,18 +155,44 @@ class Section {
     }
 
     addChord(chord) {
+        chord.parentSection = this;
         this.chords.push(chord);
+        this.refitContent();
     }
 
     insertChord(chord, index) {
+        chord.parentSection = this;
         this.chords.splice(index, 0, chord);
+        this.refitContent();
+    }
+    
+    findNearestChordIndex(x) {
+        let index = (x - this.startX - Math.max((viewportContainer.offsetWidth - viewportWidth ) / 2, 0)) / (settings.chordWidth + settings.chordSpacing);
+        if (index > this.chords.length) {
+            return this.chords.length;
+        }
+        return Math.max(0, Math.floor(index));
+    }
+
+    addKeyAreaToViewport(startX) {
+        const viewportHeight = viewportContainer.offsetHeight;
+        const tonicY = this.keyArea.getTonicY();
+        let maxY = tonicY;
+        let minY = tonicY;
+        for (let chord of this.chords) {
+            maxY = Math.max(maxY, chord.getMaxPitch().getRelativeY(tonicY));
+            minY = Math.min(minY, chord.getMinPitch().getRelativeY(tonicY));                
+        }
+        maxY += viewportHeight / 2;
+        minY -= viewportHeight / 2;
+        if (this.keyArea) {
+            this.keyArea.addToViewport(startX, startX + this.getWidth() + settings.chordWidth, minY, maxY);
+        }
     }
 
     addToViewport(startX) {
         // Add KeyArea
-        if (this.keyArea) {
-            this.keyArea.addToViewport(startX, 200);
-        }
+        this.addKeyAreaToViewport(startX)
 
         // Add Chords
         let x = startX;
@@ -142,10 +211,9 @@ class KeyArea {
      * @param {number} relativeFreq 
      * @param {Pitch | null} tonic 
      */
-    constructor(name, primaryAxis, secondaryAxis, relativeFreq, transformedTonic=[0]) {
+    constructor(primaryAxis, secondaryAxis, relativeFreq, transformedTonic=[0]) {
         // TODO: allow multiple primary axes and secondary axes
         // TODO: allow descending secondary axes
-        this.name = name;
         this.primaryAxis = primaryAxis;
         this.secondaryAxis = secondaryAxis;
         this.relativeFreq = relativeFreq;
@@ -171,10 +239,11 @@ class KeyArea {
 
     // Set all lines' x1 and x2 attributes to the new values
     redefineXBounds(x1, x2) {
-        for (el of this.htmlElements) {
+        for (let el of this.htmlElements) {
             el.setAttribute("x1", x1);
             el.setAttribute("x2", x2);
         }
+        refitSvgContent();
     }
 
     // Return the transformed vector of the nearest line to the y coordinate
@@ -208,11 +277,18 @@ class KeyArea {
         return closestPitch;
     }
 
+    // Set this KeyArea's ruler lines in the viewport, in the "keyAreas" <g>
     addToViewport(minX, maxX, minY, maxY) {
+        // Delete existing lines
+        this.htmlElements.forEach(el => {
+            el.remove();
+        });
+        this.htmlElements = [];
+
         // Tonic
         const tonicY = this.getTonicY();
         if (tonicY > minY && tonicY < maxY) {
-            this.htmlElements.push(addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${this.uid}`));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${this.uid}`)));
         } else {
             console.error(`The tonic can't be outside of the rendered bounds!\ntonicY=${tonicY}\nminY=${minY}\nmaxY=${maxY}`);
             return -1;
@@ -225,28 +301,28 @@ class KeyArea {
         // Primary Below
         let thisY = tonicY + primaryIntervalHeight;
         while (thisY < maxY) {
-            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Primary Above
         thisY = tonicY - primaryIntervalHeight;
         while (thisY > minY) {
-            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
 
         // Secondary Below
         thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
         while (thisY < maxY) {
-            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Secondary Above
         thisY = tonicY - secondaryIntervalHeight;
         while (thisY > minY) {
-            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
         return 0;
@@ -289,9 +365,13 @@ class Pitch {
         return this.parentChord.getRelativeFreq() * this.getRatio();
     }
 
+    getRelativeY(referenceFreq) {
+        return Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
+    }
+
     addToViewport(x, referenceFreq) {
         // Add pitch line
-        let thisY = Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
+        let thisY = this.getRelativeY(referenceFreq);
         this.htmlPitchElement = addPitchLine(x, x + settings.chordWidth, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
     }
 }
@@ -316,8 +396,9 @@ class IntervalBar {
 }
 
 class Chord {
-    constructor(relativeFreq, root=[0]) {
+    constructor(relativeFreq, parentSection=null, root=[0]) {
         this.relativeFreq = relativeFreq;
+        this.parentSection = parentSection
         let basePitch = new Pitch(this, root);
         this.pitches = [basePitch];
         this.intervalBars = [];
@@ -331,6 +412,32 @@ class Chord {
     getWidth() { return this.width; }
     /** @returns {string} */
     getUid() { return this.uid; }
+
+    // Return the highest pitch in the chord
+    getMaxPitch() {
+        let maxPitch = null;
+        let maxRatio = -Infinity;
+        for (let pitch of this.pitches) {
+            if (pitch.getRatio() > maxRatio) {
+                maxPitch = pitch;
+                maxRatio = pitch.getRatio();
+            }
+        }
+        return maxPitch;
+    }
+
+    // Return the lowest pitch in the chord
+    getMinPitch() {
+        let minPitch = null;
+        let minRatio = Infinity;
+        for (let pitch of this.pitches) {
+            if (pitch.getRatio() < minRatio) {
+                minPitch = pitch;
+                minRatio = pitch.getRatio();
+            }
+        }
+        return minPitch
+    }
     
     /** Returns the Pitch if the chord contains a Pitch with the given vector, or null otherwise
      * @param {Array<number>} pitchVector 
@@ -393,9 +500,10 @@ class Chord {
 
                 // Delete chord if empty
                 if (this.pitches.length === 0) {
-                    for (let i = 0; i < chordList.length; i++) {
-                        if (chordList[i].uid === this.uid) {
-                            chordList.splice(i, 1);
+                    for (let i = 0; i < this.parentSection.chords.length; i++) {
+                        if (this.parentSection.chords[i].uid === this.uid) {
+                            this.parentSection.chords.splice(i, 1);
+                            this.parentSection.refitContent();
                             return 1;
                         }
                     }
@@ -445,9 +553,10 @@ class Chord {
                     
                     // Delete chord if empty (duplicated above -> TODO: clean up)
                     if (this.pitches.length === 0) {
-                        for (let i = 0; i < chordList.length; i++) {
-                            if (chordList[i].uid === this.uid) {
-                                chordList.splice(i, 1);
+                        for (let i = 0; i < this.parentSection.chords.length; i++) {
+                            if (this.parentSection.chords[i].uid === this.uid) {
+                                this.parentSection.chords.splice(i, 1);
+                                this.parentSection.refitContent();
                                 return 1;
                             }
                         }
@@ -521,7 +630,7 @@ function newUniqueId() {
     const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
     let id;
     do {
-        id = chars[Math.round(Math.random()*26)]; // do not begin with a number
+        id = chars[Math.round(Math.random()*25)]; // do not begin with a number
         for (let i = 0; i < 5; i++) {
             id += chars[Math.round(Math.random()*35)];
         }
@@ -575,13 +684,15 @@ function refitSvgContent() {
     const bbox = viewport.getBBox();
     const padding = 0;
     viewportX = bbox.x;
-    viewportY = bbox.y;
+    viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
+    viewportWidth = bbox.width;
+    viewportHeight = Math.max(bbox.height, viewport.clientHeight);
     if (bbox.height < viewport.clientHeight) {
         viewportY -= (viewport.clientHeight - bbox.height) / 2; // TODO: perform this fix agan whenever aspect ratio changes
     }
-    viewport.setAttribute("viewBox", `${bbox.x - padding} ${bbox.y - padding} ${bbox.width + padding * 2} ${bbox.height + padding * 2}`);
+    viewport.setAttribute("viewBox", `${bbox.x - padding} ${viewportY - padding} ${bbox.width + padding * 2} ${viewportHeight + padding * 2}`);
     viewport.setAttribute("width", bbox.width + padding * 2);
-    viewport.setAttribute("height", bbox.height + padding * 2);
+    viewport.setAttribute("height", viewportHeight + padding * 2);
 }
 
 function addLine(x1, x2, y1, y2, color, opacity=1, width=settings.keyAreaLineWidth, classes="") {
@@ -717,6 +828,9 @@ let previewBasePitchElement = null;
 let previewIntervalBarElement = null;
 
 function setPreviewPitch(x, y) {
+    let section = project.getSectionAt(x);
+    let keyArea = section.keyArea;
+
     if (previewPitchElement !== null) {
         previewPitchElement.remove();
         if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
@@ -724,8 +838,8 @@ function setPreviewPitch(x, y) {
         previewPitch = null;
         previewIntervalBar = null;
     }
-    let chordIndex = findNearestChordIndex(x);
-    if (chordIndex == chordList.length) {
+    let chordIndex = section.findNearestChordIndex(x);
+    if (chordIndex === section.chords.length) {
         let previewPitchVector = [0];
         while (previewPitchVector.length <= Math.abs(selectedDimension)) {
             previewPitchVector.push(0);
@@ -745,14 +859,15 @@ function setPreviewPitch(x, y) {
         // Add interval bar
         previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     } else {
-        let nearestPitch = chordList[chordIndex].findNearestPitch(y);
+        let chord = section.chords[chordIndex];
+        let nearestPitch = chord.findNearestPitch(y);
         let previewPitchVector = [...nearestPitch.transformedVector];
         while (previewPitchVector.length <= Math.abs(selectedDimension)) {
             previewPitchVector.push(0);
         }
         previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
         previewPitch = new Pitch(null, previewPitchVector);
-        let referenceFreq = chordList[chordIndex].relativeFreq;
+        let referenceFreq = chord.relativeFreq;
 
         // Add pitch line
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
@@ -773,16 +888,19 @@ function findNearestChordIndex(x) {
 }
 
 function setSelectedPitch(x, y) {
+    let section = project.getSectionAt(x);
+    let keyArea = section.keyArea;
+
     if (selectedPitch) {
         selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
         selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
     }
 
-    let chordIndex = findNearestChordIndex(x);
-    if (chordIndex === chordList.length) {
+    let chordIndex = section.findNearestChordIndex(x);
+    if (chordIndex === section.chords.length) {
 
     } else {
-        let chord = chordList[chordIndex];
+        let chord = section.chords[chordIndex];
         selectedPitch = chord.findNearestPitch(y);
         if (selectedPitch) {
             document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
@@ -795,6 +913,32 @@ function setSelectedPitch(x, y) {
     }
 }
 
+function mouseClickInput(x, y) {
+    let section = project.getSectionAt(x);
+    let keyArea = section.keyArea;
+
+    let chordIndex = section.findNearestChordIndex(event.offsetX);
+    let newChord = false;
+    if (chordIndex === section.chords.length) {
+        section.addChord(new Chord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY))));
+        newChord = true;
+    }
+    if (!(selectedDimension === 0 && newChord)) {
+        section.chords[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
+    }
+    if (chordIndex === section.chords.length - 1) {
+        section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
+    } else {
+        while (chordIndex < section.chords.length) {
+            section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
+            chordIndex++;
+        }
+    }
+    
+    setSelectedPitch(x, y);
+    setPreviewPitch(x, y);
+}
+
 let mouseX = 0;
 let mouseY = 0;
 
@@ -804,6 +948,7 @@ viewport.addEventListener("mousemove", (event) => {
     setSelectedPitch(event.offsetX, event.offsetY)
     setPreviewPitch(event.offsetX, event.offsetY);
 });
+
 viewportContainer.addEventListener("mouseleave", (event) => {
     document.querySelectorAll(".pitchLine").forEach((el) => {
         el.setAttribute("stroke", settings.pitchLineColor);
@@ -815,28 +960,10 @@ viewportContainer.addEventListener("mouseleave", (event) => {
         previewBasePitchElement.remove();
         previewPitch = null;
     }
-})
+});
+
 viewport.addEventListener("click", (event) => {
-    let chordIndex = findNearestChordIndex(event.offsetX);
-    let addedChord = false;
-    if (chordIndex === chordList.length) {
-        chordList.push(new Chord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY))));
-        addedChord = true;
-    }
-    if (!(selectedDimension === 0 && addedChord)) {
-        chordList[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
-    }
-    if (chordIndex === chordList.length - 1) {
-        chordList[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
-    } else {
-        while (chordIndex < chordList.length) {
-            chordList[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
-            chordIndex++;
-        }
-    }
-    
-    setSelectedPitch(mouseX, mouseY);
-    setPreviewPitch(mouseX, mouseY);
+    mouseClickInput(event.offsetX, event.offsetY)
 });
 
 document.addEventListener("keypress", (event) => {
@@ -856,10 +983,12 @@ document.addEventListener("keypress", (event) => {
     }
 });
 
-let keyArea = new KeyArea("my_key", 2, 3, 261.63);
+
+let project = new Project();
+project.updateViewport();
+
 let chordList = [];
 
-
-keyArea.addToViewport(0, viewportContainer.offsetWidth, keyArea.getTonicY() - viewportContainer.offsetHeight / 2, keyArea.getTonicY() + viewportContainer.offsetHeight / 2);
+// keyArea.addToViewport(0, viewportContainer.offsetWidth, keyArea.getTonicY() - viewportContainer.offsetHeight / 2, keyArea.getTonicY() + viewportContainer.offsetHeight / 2);
 
 refitSvgContent();

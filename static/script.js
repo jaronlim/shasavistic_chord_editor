@@ -76,21 +76,110 @@ let settings = {
     // TODO: add setting to show/hide scroll bar
 }
 
-class KeyArea {
-    constructor(name, primaryAxis, secondaryAxis, tonicFrequency, hasTonic=true) {
+class Project {
+    constructor(title="untitled", description="", tuning="") {
+        this.meta = {
+            "title": title,
+            "description": description,
+            "tuning": tuning,
+        }
+        this.referenceFreq = 261.63;
+        this.sections = [];
+    }
 
+    addSection(section) {
+        this.sections.push(section);
+    }
+
+    insertSection(section, index) {
+        this.sections.splice(index, 0, section);
+    }
+}
+
+class Section {
+    /**
+     * 
+     * @param {KeyArea | null} keyArea 
+     * @param {Array<Chord>} chords 
+     */
+    constructor(keyArea=null, chords=[]) {
+        this.keyArea = keyArea;
+        this.chords = chords;
+    }
+
+    setKeyArea(keyArea) {
+        this.keyArea = keyArea;
+    }
+
+    addChord(chord) {
+        this.chords.push(chord);
+    }
+
+    insertChord(chord, index) {
+        this.chords.splice(index, 0, chord);
+    }
+
+    addToViewport(startX) {
+        // Add KeyArea
+        if (this.keyArea) {
+            this.keyArea.addToViewport(startX, 200);
+        }
+
+        // Add Chords
+        let x = startX;
+        for (let chord of this.chords) {
+            chord.addToViewport(x);
+            x += chord.width;
+        }
+    }
+}
+
+class KeyArea {
+    /** Creates a new key area to serve as the background ruler for pitches to sit on
+     * @param {string} name 
+     * @param {number} primaryAxis 
+     * @param {number} secondaryAxis 
+     * @param {number} relativeFreq 
+     * @param {Pitch | null} tonic 
+     */
+    constructor(name, primaryAxis, secondaryAxis, relativeFreq, transformedTonic=[0]) {
         // TODO: allow multiple primary axes and secondary axes
         // TODO: allow descending secondary axes
         this.name = name;
         this.primaryAxis = primaryAxis;
         this.secondaryAxis = secondaryAxis;
-        this.tonicFreq = tonicFrequency;
-        this.hasTonic = hasTonic;
+        this.relativeFreq = relativeFreq;
+        this.tonic = transformedTonic;
+        this.htmlElements = [];
+        this.uid = newUniqueId();
+    }
+
+    // Return the viewport y coordinate of the tonic
+    getTonicY() {
+        return Math.log2(intervalToRatio(this.tonic) * this.relativeFreq / C_0) * settings.octaveScale * -1;
+    }
+
+    // Add a Chord object to the KeyArea's chord list
+    addChord(chord) {
+        this.chordList.push(chord);
+    }
+
+    // Insert a Chord object into the KeyArea's chord list at a given position
+    insertChord(chord, index) {
+        this.chordList.splice(index, 0, chord);
+    }
+
+    // Set all lines' x1 and x2 attributes to the new values
+    redefineXBounds(x1, x2) {
+        for (el of this.htmlElements) {
+            el.setAttribute("x1", x1);
+            el.setAttribute("x2", x2);
+        }
     }
 
     // Return the transformed vector of the nearest line to the y coordinate
     getNearestLineVector(y) {
-        const tonicY = Math.log2(this.tonicFreq/C_0) * settings.octaveScale * -1;
+        const tonicY = this.getTonicY();
         const deltaY = y + viewportY - tonicY; // The parameter y position relative to tonic
         const primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
         const secondaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.secondaryAxis])) * settings.octaveScale;
@@ -119,43 +208,53 @@ class KeyArea {
         return closestPitch;
     }
 
-    addToViewport(minX=0, maxX=2000) {
+    addToViewport(minX, maxX, minY, maxY) {
         // Tonic
-        const tonicY = Math.log2(this.tonicFreq/C_0) * settings.octaveScale * -1;
-        addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${name}`);
+        const tonicY = this.getTonicY();
+        if (tonicY > minY && tonicY < maxY) {
+            this.htmlElements.push(addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${this.uid}`));
+        } else {
+            console.error(`The tonic can't be outside of the rendered bounds!\ntonicY=${tonicY}\nminY=${minY}\nmaxY=${maxY}`);
+            return -1;
+        }
+        
         // Interval Heights
         let primaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.primaryAxis])) * settings.octaveScale;
         let secondaryIntervalHeight = Math.log2(getPureInterval(settings.axes[this.secondaryAxis])) * settings.octaveScale;
+
         // Primary Below
         let thisY = tonicY + primaryIntervalHeight;
-        while (thisY < tonicY + containerHeight / 2) {
-            addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
+        while (thisY < maxY) {
+            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
             thisY += primaryIntervalHeight;
         }
+
         // Primary Above
         thisY = tonicY - primaryIntervalHeight;
-        while (thisY > tonicY - containerHeight / 2) {
-            addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
+        while (thisY > minY) {
+            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
             thisY -= primaryIntervalHeight;
         }
+
         // Secondary Below
         thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
-        while (thisY < tonicY + containerHeight / 2) {
-            addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
+        while (thisY < maxY) {
+            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
             thisY += primaryIntervalHeight;
         }
+
         // Secondary Above
         thisY = tonicY - secondaryIntervalHeight;
-        while (thisY > tonicY - containerHeight / 2) {
-            addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.name}`);
+        while (thisY > minY) {
+            this.htmlElements.push(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`));
             thisY -= primaryIntervalHeight;
         }
+        return 0;
     }
 }
 
 class Pitch {
-    /**
-     * Creates a new relative Pitch. Absolute pitch is not stored.
+    /** Creates a new relative Pitch. Absolute pitch is not stored.
      * @param {Chord} parentChord The Chord this Pitch belongs to
      * @param {Array<number>} transformedVector Pitch coordinate using octave-scaled basis vectors
      * @param {Pitch} relativePitch The Pitch that this one should reference as its parent
@@ -166,7 +265,6 @@ class Pitch {
         this.htmlPitchElement = null;
         this.htmlIntervalBarElements = [];
     }
-
 
     static intervalsEqual(a, b) {
         for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -184,11 +282,11 @@ class Pitch {
     }
 
     getRatio() {
-        return getTransformedInterval(this.transformedVector);
+        return intervalToRatio(this.transformedVector);
     }
 
     getFrequency() {
-        return this.parentChord.relativeFreq * this.getRatio();
+        return this.parentChord.getRelativeFreq() * this.getRatio();
     }
 
     addToViewport(x, referenceFreq) {
@@ -223,11 +321,18 @@ class Chord {
         let basePitch = new Pitch(this, root);
         this.pitches = [basePitch];
         this.intervalBars = [];
-        this.uid = "chord-" + newUniqueId();
+        this.width = settings.chordWidth;
+        this.uid = newUniqueId();
     }
+
+    /** @returns {number} */ 
+    getRelativeFreq() { return this.relativeFreq; }
+    /** @returns {number} */
+    getWidth() { return this.width; }
+    /** @returns {string} */
+    getUid() { return this.uid; }
     
-    /**
-     * Returns the Pitch if the chord contains a Pitch with the given vector, or null otherwise
+    /** Returns the Pitch if the chord contains a Pitch with the given vector, or null otherwise
      * @param {Array<number>} pitchVector 
      * @returns {Pitch}
      */
@@ -413,10 +518,10 @@ class Chord {
 
 let idsInUse = [];
 function newUniqueId() {
-    const chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
     let id;
     do {
-        id = "";
+        id = chars[Math.round(Math.random()*26)]; // do not begin with a number
         for (let i = 0; i < 5; i++) {
             id += chars[Math.round(Math.random()*35)];
         }
@@ -458,7 +563,7 @@ function getPureInterval(arr) {
 }
 
 /** 0D-indexed, shasavistic interval vector to pitch ratio */
-function getTransformedInterval(arr) {
+function intervalToRatio(arr) {
     let product = 1;
     for (let i = 0; i < arr.length; i++) {
         product *= getPureInterval(settings.axes[i]) ** arr[i];
@@ -629,7 +734,7 @@ function setPreviewPitch(x, y) {
         previewPitch = new Pitch(null, previewPitchVector);
         
         let nearestLineVector = keyArea.getNearestLineVector(y);
-        let referenceFreq = 261.63 * getTransformedInterval(nearestLineVector);
+        let referenceFreq = 261.63 * intervalToRatio(nearestLineVector);
 
         let baseY = Math.log2(referenceFreq / C_0) * settings.octaveScale * -1;
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
@@ -668,11 +773,11 @@ function findNearestChordIndex(x) {
 }
 
 function setSelectedPitch(x, y) {
-    // TODO: don't querySelectorAll to remove pitch line highlight (also in "mouseleave" event)
-    document.querySelectorAll(".pitchLine").forEach((el) => {
-        el.setAttribute("stroke", settings.pitchLineColor);
-        el.setAttribute("stroke-width", settings.pitchLineWidth);
-    });
+    if (selectedPitch) {
+        selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
+        selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
+    }
+
     let chordIndex = findNearestChordIndex(x);
     if (chordIndex === chordList.length) {
 
@@ -715,7 +820,7 @@ viewport.addEventListener("click", (event) => {
     let chordIndex = findNearestChordIndex(event.offsetX);
     let addedChord = false;
     if (chordIndex === chordList.length) {
-        chordList.push(new Chord(261.63 * getTransformedInterval(keyArea.getNearestLineVector(event.offsetY))));
+        chordList.push(new Chord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY))));
         addedChord = true;
     }
     if (!(selectedDimension === 0 && addedChord)) {
@@ -754,6 +859,7 @@ document.addEventListener("keypress", (event) => {
 let keyArea = new KeyArea("my_key", 2, 3, 261.63);
 let chordList = [];
 
-keyArea.addToViewport();
+
+keyArea.addToViewport(0, viewportContainer.offsetWidth, keyArea.getTonicY() - viewportContainer.offsetHeight / 2, keyArea.getTonicY() + viewportContainer.offsetHeight / 2);
 
 refitSvgContent();

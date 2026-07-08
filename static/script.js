@@ -146,7 +146,6 @@ class Section {
     }
 
     refitContent() {
-        console.log('REFIT');
         // this.keyArea.redefineXBounds(this.startX, this.startX + this.getWidth() + settings.chordWidth);
         this.addKeyAreaToViewport(this.startX);
         refitSvgContent();
@@ -182,7 +181,6 @@ class Section {
         const tonicFreq = intervalToRatio(this.keyArea.tonic) * this.keyArea.relativeFreq;
         let maxY = tonicY;
         let minY = tonicY;
-        console.log(`tonicY: ${tonicY}`);
         for (let chord of this.chords) {
             let chordReferenceFreq = chord.getRelativeFreq()
             let chordMaxY = chord.getMinPitch().getRelativeY(chordReferenceFreq);
@@ -192,7 +190,6 @@ class Section {
         }
         maxY += viewportHeight / 2;
         minY -= viewportHeight / 2;
-        console.log(`max: ${maxY}, min: ${minY}`);
         if (this.keyArea) {
             this.keyArea.addToViewport(startX, startX + this.getWidth() + settings.chordWidth, minY, maxY);
         }
@@ -295,7 +292,6 @@ class KeyArea {
     addToViewport(minX, maxX, minY, maxY) {
         this.minX = minX;
         this.maxX = maxX;
-        console.log(`ADD KEYAREA: minY:${minY}, maxY:${maxY}`);
         // Delete existing lines
         this.htmlElements.forEach(el => {
             el.remove();
@@ -383,7 +379,6 @@ class Pitch {
     }
 
     getRelativeY(referenceFreq) {
-        console.log(`relativeY: ${Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1}`);
         return Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
     }
 
@@ -705,12 +700,10 @@ function refitSvgContent() {
     const vertPadding = 5;
     const horizPadding = 0;
     viewportX = bbox.x;
-    console.log(`A:${bbox.y}\nB:${bbox.y + (viewportContainer.clientHeight - bbox.height)}`);
     // viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
     viewportY = bbox.y;
     viewportWidth = bbox.width;
     viewportHeight = Math.max(bbox.height, viewportContainer.clientHeight);
-    console.log(`viewportHeight: ${viewportHeight}`);
     if (viewportHeight + vertPadding * 2 < viewportContainer.clientHeight) {
         viewportY -= (viewportContainer.clientHeight - viewportHeight - vertPadding * 2) / 2;
     }

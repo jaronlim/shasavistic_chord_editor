@@ -325,28 +325,28 @@ class KeyArea {
 
         // Primary Below
         let thisY = tonicY + primaryIntervalHeight;
-        while (thisY < maxY) {
+        while (thisY < maxY + primaryIntervalHeight) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Primary Above
         thisY = tonicY - primaryIntervalHeight;
-        while (thisY > minY) {
+        while (thisY > minY - primaryIntervalHeight) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
 
         // Secondary Below
         thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
-        while (thisY < maxY) {
+        while (thisY < maxY + primaryIntervalHeight) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Secondary Above
         thisY = tonicY - secondaryIntervalHeight;
-        while (thisY > minY) {
+        while (thisY > minY - primaryIntervalHeight) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
@@ -725,6 +725,8 @@ function refitSvgContent() {
     viewport.setAttribute("height", viewportHeight + vertPadding * 2);
     if (oldViewportY) {
         viewportContainer.scrollTop += oldViewportY - viewportY;
+    } else {
+        viewportContainer.scrollTop = ((viewportHeight + vertPadding * 2) - viewportContainer.clientHeight) / 2; // Initialize scroll to center
     }
     oldViewportY = viewportY;
     

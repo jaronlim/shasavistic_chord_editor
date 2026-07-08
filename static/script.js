@@ -73,6 +73,9 @@ let settings = {
     "leftPadding": 50,
     "rightPadding": 50,
 
+    "finalSectionRightBuffer": viewportContainer.clientWidth - 170,
+    "autoScrollToNewChord": true,
+
     // CHORD RENDERING SETTINGS
     "chordWidth": 70,
     "chordSpacing": 45,
@@ -93,6 +96,8 @@ class Project {
     }
 
     addSection(section) {
+        this.sections[this.sections.length - 1].isFinalSection = false;
+        section.isFinalSection = true;
         this.sections.push(section);
     }
 
@@ -125,18 +130,21 @@ class Section {
      * @param {KeyArea | null} keyArea 
      * @param {Array<Chord>} chords 
      */
-    constructor(startX, keyArea=null, chords=[]) {
+    constructor(startX, keyArea=null, chords=[], isFinalSection=true) {
         this.leftPadding = settings.leftPadding;
         this.rightPadding = settings.rightPadding;
         this.keyArea = keyArea;
         this.chords = chords;
         this.startX = startX;
+        this.isFinalSection = isFinalSection;
+        this.isFocused = true; // TODO: toggle this when the focused section changes
     }
 
     setStartX(newX) {
         startX = newX;
     }
 
+    // Get the total width of the section, not including right-side buffer space for adding chords.
     getWidth() {
         let sum = 0;
         for (let chord of this.chords) {
@@ -190,13 +198,18 @@ class Section {
         }
         maxY += viewportHeight / 2;
         minY -= viewportHeight / 2;
+
+        let width = this.getWidth() + (this.isFocused ? settings.chordWidth : 0);
+        if (this.isFinalSection) {
+            width += settings.finalSectionRightBuffer;
+        }
+        
         if (this.keyArea) {
-            this.keyArea.addToViewport(startX, startX + this.getWidth() + settings.chordWidth, minY, maxY);
+            this.keyArea.addToViewport(startX, startX + width, minY, maxY);
         }
     }
 
     addToViewport(startX) {
-        // this.refitContent();
 
         // Add KeyArea
         this.addKeyAreaToViewport(startX)
@@ -254,7 +267,6 @@ class KeyArea {
             el.setAttribute("x1", x1);
             el.setAttribute("x2", x2);
         }
-        refitSvgContent();
     }
 
     // Return the transformed vector of the nearest line to the y coordinate
@@ -696,6 +708,7 @@ function intervalToRatio(arr) {
 let oldViewportY;
 function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
+    // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
     const bbox = viewport.getBBox();
     const vertPadding = 5;
     const horizPadding = 0;

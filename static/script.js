@@ -1,10 +1,7 @@
 const viewport = document.getElementById("viewport");
 const viewportContainer = document.getElementById("viewport-container");
-const containerHeight = viewportContainer.offsetHeight;
 
 const keyAreasViewportGroup = document.getElementById("keyAreas");
-
-const pitchAxisScale = 1;
 
 const PRIMES = [2, 3, 5, 7, 11, 13, 17];
 const C_0 = 16.3516 //hz
@@ -24,7 +21,7 @@ const viewportPaddingX = 50;
 viewport.style.backgroundColor = "#676681";
 
 let settings = {
-    
+
     "octaveScale": 120, // TODO: change default ctrl+scroll behavior to zoom
 
     "axes": [
@@ -160,7 +157,6 @@ class Section {
     }
 
     refitContent() {
-        // this.keyArea.redefineXBounds(this.startX, this.startX + this.getWidth() + settings.chordWidth);
         this.addKeyAreaToViewport(this.startX);
         refitSvgContent();
     }
@@ -216,7 +212,6 @@ class Section {
     }
 
     addToViewport(startX) {
-
         // Add KeyArea
         this.addKeyAreaToViewport(startX)
 
@@ -301,8 +296,6 @@ class KeyArea {
             closestPitch[this.primaryAxis] = closestSecondary;
             closestPitch[this.secondaryAxis] = 1;
         }
-        // console.log(`viewportY:${viewportY}\ny:${y}\ntonicY:${tonicY}\ndeltaY:${deltaY}`);
-        // console.log(closestPitch);
         return closestPitch;
     }
 
@@ -653,7 +646,6 @@ class Chord {
             b.addToViewport(x, this.relativeFreq);
         }
     }
-
 }
 
 let idsInUse = [];
@@ -689,7 +681,6 @@ function menuSelect(buttonType, arg="") {
         default:
             console.warn("Failed to update a menu button!");
             break;
-
     }
 }
 
@@ -750,7 +741,6 @@ function addLine(x1, x2, y1, y2, color, opacity=1, width=settings.keyAreaLineWid
     line.setAttribute("class", classes)
     return viewport.appendChild(line);
 }
-
 
 function addRhombusLine(x1, x2, y1, y2, color, opacity=1, width=8, classes="") {
     let line = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
@@ -864,7 +854,6 @@ function addPitchLine(x1, x2, y, color=settings.pitchLineColor, opacity=1, width
     return addLine(x1, x2, y, y, color, opacity, width, classes);
 }
 
-
 let previewPitch = null;
 let previewPitchElement = null;
 let previewBasePitchElement = null;
@@ -920,14 +909,6 @@ function setPreviewPitch(x, y) {
         // Add interval bar
         previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     }
-}
-
-function findNearestChordIndex(x) {
-    let index = (x - viewportPaddingX) / (settings.chordWidth + settings.chordSpacing);
-    if (index > chordList.length) {
-        return chordList.length;
-    }
-    return Math.max(0, Math.floor(index));
 }
 
 function setSelectedPitch(x, y) {
@@ -997,6 +978,7 @@ viewportContainer.addEventListener("mouseleave", (event) => {
         el.setAttribute("stroke", settings.pitchLineColor);
         el.setAttribute("stroke-width", settings.pitchLineWidth);
     });
+
     if (previewPitch !== null) {
         previewPitchElement.remove();
         if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
@@ -1019,7 +1001,6 @@ document.addEventListener("keypress", (event) => {
     if (event.key === settings.hotkeys.selectAscent) { menuSelect("dir", 1); needsPreviewPitchRedraw = true; }
     if (event.key === settings.hotkeys.selectDescent) { menuSelect("dir", -1); needsPreviewPitchRedraw = true; }
 
-
     if (needsPreviewPitchRedraw) {
         setSelectedPitch(mouseX, mouseY);
         setPreviewPitch(mouseX, mouseY);
@@ -1033,9 +1014,5 @@ window.addEventListener("resize", (event) => {
 
 let project = new Project();
 project.updateViewport();
-
-let chordList = [];
-
-// keyArea.addToViewport(0, viewportContainer.offsetWidth, keyArea.getTonicY() - viewportContainer.offsetHeight / 2, keyArea.getTonicY() + viewportContainer.offsetHeight / 2);
 
 refitSvgContent();

@@ -165,16 +165,16 @@ class Section {
         this.keyArea = keyArea;
     }
 
-    addChord(chord) {
-        chord.parentSection = this;
+    addChord(relativeFreq, root=[0]) {
+        let chord = new Chord(relativeFreq, this, root);
         this.chords.push(chord);
-        this.keyArea.redefineXBounds(this.startX, this.startX + this.getWidth() + settings.chordWidth);
+        this.refitContent();
     }
 
-    insertChord(chord, index) {
-        chord.parentSection = this;
+    insertChord(index, relativeFreq, root=[0]) {
+        let chord = new Chord(relativeFreq, this, root);
         this.chords.splice(index, 0, chord);
-        this.keyArea.redefineXBounds(this.startX, this.startX + this.getWidth() + settings.chordWidth);
+        this.refitContent();
     }
     
     findNearestChordIndex(x) {
@@ -424,6 +424,7 @@ class Chord {
         this.relativeFreq = relativeFreq;
         this.parentSection = parentSection
         this.pitches = [new Pitch(this, root)];
+        if (this.parentSection) { this.parentSection.refitContent(); }
         this.intervalBars = [];
         this.width = settings.chordWidth;
         this.uid = newUniqueId();
@@ -492,7 +493,9 @@ class Chord {
         fromVector.unshift(0);
         // Check that parent exists
         let parent = this.getPitch(fromVector);
-        if (!parent) { console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`); return; }
+        if (!parent) {
+            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`); return;
+        }
 
         // Check that new pitch doesn't already exist
         let newPitchVector = [...parent.transformedVector];
@@ -944,7 +947,7 @@ function mouseClickInput(x, y) {
     let chordIndex = section.findNearestChordIndex(event.offsetX);
     let newChord = false;
     if (chordIndex === section.chords.length) {
-        section.addChord(new Chord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY))));
+        section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY)));
         newChord = true;
     }
     if (!(selectedDimension === 0 && newChord)) {

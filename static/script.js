@@ -95,6 +95,11 @@ class Project {
         this.sections = [new Section(0, new KeyArea(2, 3, 261.63))];
     }
 
+    fitInWindow() {
+        settings.finalSectionRightBuffer = viewportContainer.clientWidth - 170; // TODO: find solution that doesn't involve changing settings in background
+        this.updateViewport();
+    }
+
     addSection(section) {
         this.sections[this.sections.length - 1].isFinalSection = false;
         section.isFinalSection = true;
@@ -122,6 +127,7 @@ class Project {
             section.addToViewport(x);
             x += section.getWidth();
         }
+        refitSvgContent();
     }
 }
 
@@ -215,7 +221,7 @@ class Section {
         this.addKeyAreaToViewport(startX)
 
         // Add Chords
-        let x = startX;
+        let x = startX + settings.leftPadding;
         for (let chord of this.chords) {
             chord.addToViewport(x);
             x += chord.width;
@@ -1018,6 +1024,10 @@ document.addEventListener("keypress", (event) => {
         setSelectedPitch(mouseX, mouseY);
         setPreviewPitch(mouseX, mouseY);
     }
+});
+
+window.addEventListener("resize", (event) => {
+    project.fitInWindow();
 });
 
 

@@ -681,10 +681,68 @@ function menuSelect(buttonType, arg="") {
             });
             document.querySelector(`#button-${arg === 1? "ascent" : "descent"}`).classList.add("selected-button");
             break;
+        case "settings":
+            populateSettingsElement();
+            break;
         default:
             console.warn("Failed to update a menu button!");
             break;
     }
+}
+
+function populateSettingsElement() {
+    let popover = document.getElementById("settings-popover");
+    popover.innerHTML = "";
+    let table = document.createElement("table");
+    table.setAttribute("id", "settings-table");
+
+    for (let key in settings) {
+        let row = document.createElement("tr");
+        row.setAttribute("id", "settings-" + key);
+        row.setAttribute("class", "settings-entry");
+        
+        let inputField = document.createElement("input");
+        inputField.setAttribute("settings-key", key);
+        switch (typeof settings[key]) {
+            case "string":
+                inputField.setAttribute("type", "text");
+                break;
+            case "number":
+                inputField.setAttribute("type", "number");
+                inputField.setAttribute("step", 0.01);
+                break;
+            case "boolean":
+                inputField.setAttribute("type", "checkbox");
+                break;
+            case "object":
+                if (settings[key].constructor === Array) {
+                    inputField.setAttribute("type", "hidden");
+                } else {
+                    inputField.setAttribute("type", "hidden");
+                    console.warn(`Found settings value of non-array object!`);
+                }
+                break;
+            default:
+                inputField.setAttribute("type", "hidden");
+                console.warn(`Found settings value of an unknown type!\n${settings[key]} of type ${typeof settings[key]}`);
+        }
+        inputField.value = settings[key];
+        row.innerHTML = `<td class="settings-key-column">${key}</td><td class="settings-input-column"></td>`;
+        row.getElementsByClassName("settings-input-column")[0].appendChild(inputField);
+        table.appendChild(row)
+
+        inputField.addEventListener("focusout", (event) => {
+            // TODO: format and sanitize input
+            settings[event.target.getAttribute("settings-key")] = event.target.value;
+            project.updateViewport();
+        });
+        inputField.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.target.blur();
+            }
+        })
+    }
+    popover.appendChild(table);
 }
 
 /** pure val to pitch ratio */

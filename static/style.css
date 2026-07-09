@@ -64,6 +64,25 @@ body {
   min-height:100%;
 }
 
+#settings-popover:popover-open {
+  width: 50%;
+  height: 50%;
+  border-radius: 10px;
+}
+
+#settings-table {
+    width: 100%;
+}
+
+#settings-table td {
+    padding: 5px;
+    color: green;
+}
+
+.settings-key-column {
+    text-align: right;
+}
+
 .menu-button {
     width: 40px;
     height: 40px;

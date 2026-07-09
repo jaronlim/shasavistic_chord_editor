@@ -1,3 +1,13 @@
+@font-face {
+    font-family: 'Lapisia';
+    src: url(fonts/Lapisia.woff2) format('woff2');
+}
+
+@font-face {
+    font-family: Fglyph;
+    src: url(fonts/Fglyph.woff2);
+}
+
 body {
     display: grid;
     background-color: #98b9dc;
@@ -68,6 +78,7 @@ body {
   width: 50%;
   height: 50%;
   border-radius: 10px;
+  font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 #settings-table {
@@ -108,4 +119,12 @@ img {
   -webkit-user-drag: none;
   -webkit-user-select: none;
   -ms-user-select: none;
+}
+
+.fglyph {
+    font-family: Fglyph;
+}
+
+.lapisia {
+    font-family: Lapisia;
 }

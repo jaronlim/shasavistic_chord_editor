@@ -692,7 +692,7 @@ function menuSelect(buttonType, arg="") {
 
 function populateSettingsElement() {
     let popover = document.getElementById("settings-popover");
-    popover.innerHTML = "";
+    popover.innerHTML = "<div style=\"padding:8px; background-color: lightcoral\"><strong>Warning! Some settings are currently broken and could ruin your project!</strong></div>";
     let table = document.createElement("table");
     table.setAttribute("id", "settings-table");
 
@@ -703,39 +703,34 @@ function populateSettingsElement() {
         
         let inputField = document.createElement("input");
         inputField.setAttribute("settings-key", key);
-        switch (typeof settings[key]) {
-            case "string":
+        switch (settingsMetaInfo[key].type) {
+            case "text":
                 inputField.setAttribute("type", "text");
                 break;
             case "number":
                 inputField.setAttribute("type", "number");
                 inputField.setAttribute("step", 0.01);
                 break;
-            case "boolean":
+            case "bool":
                 inputField.setAttribute("type", "checkbox");
                 break;
-            case "object":
-                if (settings[key].constructor === Array) {
-                    inputField.setAttribute("type", "hidden");
-                } else {
-                    inputField.setAttribute("type", "hidden");
-                    console.warn(`Found settings value of non-array object!`);
-                }
+            case "array":
+                inputField.setAttribute("type", "hidden");
+                break;
+            case "json":
+                inputField.setAttribute("type", "hidden");
                 break;
             default:
                 inputField.setAttribute("type", "hidden");
                 console.warn(`Found settings value of an unknown type!\n${settings[key]} of type ${typeof settings[key]}`);
         }
         inputField.value = settings[key];
-        row.innerHTML = `<td class="settings-key-column">${key}</td><td class="settings-input-column"></td>`;
+        inputField.setAttribute("type", settingsInputTypes[settingsMetaInfo[key].type])
+        row.innerHTML = `<td class="settings-key-column">${settingsMetaInfo[key].name}</td><td class="settings-input-column"></td>`;
         row.getElementsByClassName("settings-input-column")[0].appendChild(inputField);
         table.appendChild(row)
 
-        inputField.addEventListener("focusout", (event) => {
-            // TODO: format and sanitize input
-            settings[event.target.getAttribute("settings-key")] = event.target.value;
-            project.updateViewport();
-        });
+        inputField.addEventListener("focusout", settingsChanged);
         inputField.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 event.target.blur();
@@ -743,6 +738,30 @@ function populateSettingsElement() {
         })
     }
     popover.appendChild(table);
+}
+
+function settingsChanged(event) {
+    console.log("settings changed");
+    let key = event.target.getAttribute("settings-key")
+    let rawValue = event.target.value;
+    let meta = settingsMetaInfo[key];
+    if (!meta) { console.error("Failed to update settings."); return; }
+    switch (meta.type) {
+        case "number":
+            if (rawValue < meta.min || rawValue > meta.max) {
+                // TODO: show error tooltip
+                break;
+            }
+            settings[key] = rawValue;
+            break;
+        case "color":
+            settings[key] = rawValue;
+            break;
+        case "text":
+            settings[key] = rawValue;
+            break;
+    }
+    project.updateViewport();
 }
 
 /** pure val to pitch ratio */

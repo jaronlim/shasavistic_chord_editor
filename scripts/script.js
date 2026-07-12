@@ -178,7 +178,7 @@ class Section {
     }
     
     findNearestChordIndex(x) {
-        let index = (x - this.startX - Math.max((viewportContainer.offsetWidth - viewportWidth ) / 2, 0)) / (settings.chordWidth + settings.chordSpacing);
+        let index = (x - this.startX - Math.max((viewportContainer.offsetWidth - viewportWidth ) / 2, 0) - this.leftPadding + (settings.chordSpacing / 2)) / (settings.chordWidth + settings.chordSpacing);
         if (index > this.chords.length) {
             return this.chords.length;
         }

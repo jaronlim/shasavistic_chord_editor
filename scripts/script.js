@@ -783,12 +783,12 @@ function intervalToRatio(arr) {
 }
 
 let oldViewportY; // stores previous viewport Y position to help calculate new y coordinates on refit (also used in mouseClickInput)
+const vertPadding = 5;
+const horizPadding = 0;
 function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
     // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
     const bbox = viewport.getBBox();
-    const vertPadding = 5;
-    const horizPadding = 0;
     viewportX = bbox.x;
     // viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
     viewportY = bbox.y;
@@ -1049,8 +1049,8 @@ let mouseY = 0;
 viewport.addEventListener("mousemove", (event) => {
     mouseX = event.offsetX;
     mouseY = event.offsetY;
-    setSelectedPitch(event.offsetX, event.offsetY)
-    setPreviewPitch(event.offsetX, event.offsetY);
+    setSelectedPitch(event.offsetX - horizPadding, event.offsetY - vertPadding)
+    setPreviewPitch(event.offsetX - horizPadding, event.offsetY - vertPadding);
 });
 
 viewportContainer.addEventListener("mouseleave", (event) => {

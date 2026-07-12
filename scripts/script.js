@@ -625,6 +625,7 @@ class Chord {
      * @param {number} y 
      */
     findNearestPitch(y) {
+        const nullDistance = 80;
         let minDistance = Infinity;
         let closestPitch = null;
         for (let p of this.pitches) {
@@ -634,6 +635,7 @@ class Chord {
                 closestPitch = p;
             }
         }
+        if (minDistance > nullDistance) return null;
         return closestPitch;
     }
 
@@ -972,6 +974,7 @@ function setPreviewPitch(x, y) {
     } else {
         let chord = section.chords[chordIndex];
         let nearestPitch = chord.findNearestPitch(y);
+        if (!nearestPitch) return;
         let previewPitchVector = [...nearestPitch.transformedVector];
         while (previewPitchVector.length <= Math.abs(selectedDimension)) {
             previewPitchVector.push(0);
@@ -1067,7 +1070,16 @@ viewportContainer.addEventListener("mouseleave", (event) => {
     }
 });
 
-viewport.addEventListener("click", (event) => {
+let mouseDownX;
+let mouseDownY;
+viewport.addEventListener("mousedown", (event) => {
+    mouseDownX = event.offsetX;
+    mouseDownY = event.offsetY;
+});
+
+const cancelInputRadius = 25;
+viewport.addEventListener("mouseup", (event) => {
+    if ((mouseDownX - event.offsetX)**2 + (mouseDownY - event.offsetY)**2 > cancelInputRadius ** 2) return;
     mouseClickInput(event.offsetX, event.offsetY)
 });
 

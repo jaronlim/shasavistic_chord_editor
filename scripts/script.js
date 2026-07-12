@@ -782,7 +782,7 @@ function intervalToRatio(arr) {
     return product;
 }
 
-let oldViewportY;
+let oldViewportY; // stores previous viewport Y position to help calculate new y coordinates on refit (also used in mouseClickInput)
 function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
     // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
@@ -806,7 +806,6 @@ function refitSvgContent() {
         viewportContainer.scrollTop = ((viewportHeight + vertPadding * 2) - viewportContainer.clientHeight) / 2; // Initialize scroll to center
     }
     oldViewportY = viewportY;
-    
 }
 
 function addLine(x1, x2, y1, y2, color, opacity=1, width=settings.keyAreaLineWidth, classes="") {
@@ -1018,6 +1017,7 @@ function setSelectedPitch(x, y) {
 }
 
 function mouseClickInput(x, y) {
+    let saveOldViewportY = oldViewportY;
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
 
@@ -1038,9 +1038,9 @@ function mouseClickInput(x, y) {
             chordIndex++;
         }
     }
-    
-    setSelectedPitch(x, y);
-    setPreviewPitch(x, y);
+    let deltaViewportY = oldViewportY - saveOldViewportY;
+    setSelectedPitch(x, y - deltaViewportY);
+    setPreviewPitch(x, y - deltaViewportY);
 }
 
 let mouseX = 0;

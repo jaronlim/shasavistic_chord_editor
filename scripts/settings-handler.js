@@ -96,6 +96,14 @@ let settingsMetaInfo = {
         "type": "color",
         "default": "#ffffff",
     },
+    "intervalBarWidth": {
+        "name": "Interval Bar Width",
+        "desc": "The width of colored interval bars within each chord",
+        "type": "number",
+        "min": 1,
+        "max": 16,
+        "default": 8
+    },
 
     // KEY AREA SETTINGS
     "tonicLineWidth":  {

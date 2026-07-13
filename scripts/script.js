@@ -60,6 +60,7 @@ let settings = {
     "pitchLineColor": "white",
     "pitchLineSelectedWidth": 4,
     "pitchLineSelectedColor": "white",
+    "intervalBarWidth": 8,
 
     // KEY AREA SETTINGS
     "tonicLineWidth":  2,
@@ -192,7 +193,7 @@ class Section {
         let maxY = tonicY;
         let minY = tonicY;
         for (let chord of this.chords) {
-            let chordReferenceFreq = chord.getRelativeFreq()
+            let chordReferenceFreq = chord.relativeFreq;
             let chordMaxY = chord.getMinPitch().getRelativeY(chordReferenceFreq);
             let chordMinY = chord.getMaxPitch().getRelativeY(chordReferenceFreq);
             maxY = Math.max(maxY, chordMaxY);
@@ -364,6 +365,8 @@ class Pitch {
         this.transformedVector = transformedVector;
         this.htmlPitchElement = null;
         this.htmlIntervalBarElements = [];
+        this.leftOffset = 0;
+        this.rightOffset = 0;
     }
 
     static intervalsEqual(a, b) {
@@ -386,7 +389,7 @@ class Pitch {
     }
 
     getFrequency() {
-        return this.parentChord.getRelativeFreq() * this.getRatio();
+        return this.parentChord.relativeFreq * this.getRatio();
     }
 
     getRelativeY(referenceFreq) {
@@ -394,9 +397,8 @@ class Pitch {
     }
 
     addToViewport(x, referenceFreq) {
-        // Add pitch line
         let thisY = this.getRelativeY(referenceFreq);
-        this.htmlPitchElement = addPitchLine(x, x + settings.chordWidth, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+        this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
     }
 }
 
@@ -430,12 +432,8 @@ class Chord {
         this.uid = newUniqueId();
     }
 
-    /** @returns {number} */ 
-    getRelativeFreq() { return this.relativeFreq; }
     /** @returns {number} */
     getWidth() { return this.width; }
-    /** @returns {string} */
-    getUid() { return this.uid; }
 
     // Return the highest pitch in the chord
     getMaxPitch() {
@@ -484,12 +482,89 @@ class Chord {
         return null;
     }
 
+    // Forcefully remove a Pitch and any associated interval bars
+    removePitch(pitch) {
+        // Remove bars
+        for (let i = 0; i < this.intervalBars.length; i++) {
+            let bar = this.intervalBars[i];
+            if (bar.hasPitch(pitch)) {
+                this.intervalBars.splice(i, 1);
+                i--;
+            }
+        }
+        // Remove pitch
+        for (let i = 0; i < this.pitches.length; i++) {
+            if (this.pitches[i] === pitch) {
+                this.pitches[i].htmlPitchElement.remove();
+                this.pitches.splice(i, 1);
+                break;
+            }
+        }
+
+        // Delete chord if empty
+        if (this.pitches.length === 0) {
+            this.deleteSelf();
+            return 1;
+        }
+        return 0;
+    }
+
+    // Add standalone interval bar (you must add pitch separately)
+    addIntervalBar(dim, parent, child) {
+        let bar;
+        if (dim < 0) {
+            bar = new IntervalBar(this, parent, child, dim);
+        } else {
+            bar = new IntervalBar(this, child, parent, dim);
+        }
+        this.intervalBars.push(bar);
+    }
+
+    // Remove an interval bar including its terminal pitch(es) if they have no other connecting intervals
+    removeIntervalBar(bar, i) {
+        let existingBar = bar;
+        // Remove bar
+        if(existingBar.htmlBarElement) {existingBar.htmlBarElement.remove();}
+        this.intervalBars.splice(i, 1);
+
+        // Remove pitches if orphaned
+        let pitchAboveOrphaned = true;
+        let pitchBelowOrphaned = true;
+        for (let b of this.intervalBars) {
+            if (b.hasPitch(existingBar.pitchAbove)) {
+                pitchAboveOrphaned = false;
+            }
+            if (b.hasPitch(existingBar.pitchBelow)) {
+                pitchBelowOrphaned = false;
+            }
+        }
+        if (pitchAboveOrphaned || pitchBelowOrphaned) {
+            for (let j = 0; j < this.pitches.length; j++) {
+                if (pitchAboveOrphaned && this.pitches[j] == existingBar.pitchAbove) {
+                    existingBar.pitchAbove.htmlPitchElement.remove();
+                    this.pitches.splice(j, 1);
+                    j--;
+                } else if (pitchBelowOrphaned && this.pitches[j] == existingBar.pitchBelow) {
+                    existingBar.pitchBelow.htmlPitchElement.remove();
+                    this.pitches.splice(j, 1);
+                    j--;
+                }
+            }
+            
+            // Delete chord if empty
+            if (this.pitches.length === 0) {
+                this.deleteSelf();
+                return 1;
+            }
+        }
+    }
+
     /**
-     * Add a pitch to the chord, relative to another pitch
+     * Add or remove an interval from the chord, relative to an existing pitch
      * @param {Array<number>} fromVector The relative pitch on which to stack the new interval (val: starts at prime 2)
      * @param {number} dim 
      */
-    addPitch(fromVector, dim) {
+    inputInterval(fromVector, dim) {
         fromVector.unshift(0);
         // Check that parent exists
         let parent = this.getPitch(fromVector);
@@ -505,31 +580,9 @@ class Chord {
         newPitchVector[Math.abs(dim)] += Math.sign(dim);
         let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
-            // In the case of 0D, remove all associated interval bars
+            // In the case of 0D, remove pitch and all associated interval bars
             if (dim === 0) {
-                // Remove bars
-                for (let i = 0; i < this.intervalBars.length; i++) {
-                    let bar = this.intervalBars[i];
-                    if (bar.hasPitch(parent)) {
-                        this.intervalBars.splice(i, 1);
-                        i--;
-                    }
-                }
-                // Remove pitch
-                for (let i = 0; i < this.pitches.length; i++) {
-                    if (this.pitches[i] === parent) {
-                        this.pitches[i].htmlPitchElement.remove();
-                        this.pitches.splice(i, 1);
-                        break;
-                    }
-                }
-
-                // Delete chord if empty
-                if (this.pitches.length === 0) {
-                    this.deleteSelf();
-                    return 1;
-                }
-                return 0;
+                return this.removePitch(parent);
             }
 
             // Check if the interval bar already exists
@@ -544,62 +597,16 @@ class Chord {
                 i++;
             }
             if (existingBar) {
-                // Remove bar
-                if(existingBar.htmlBarElement) {existingBar.htmlBarElement.remove();}
-                this.intervalBars.splice(i, 1);
-
-                // Remove pitches if orphaned
-                let pitchAboveOrphaned = true;
-                let pitchBelowOrphaned = true;
-                for (let b of this.intervalBars) {
-                    if (b.hasPitch(existingBar.pitchAbove)) {
-                        pitchAboveOrphaned = false;
-                    }
-                    if (b.hasPitch(existingBar.pitchBelow)) {
-                        pitchBelowOrphaned = false;
-                    }
-                }
-                if (pitchAboveOrphaned || pitchBelowOrphaned) {
-                    for (let j = 0; j < this.pitches.length; j++) {
-                        if (pitchAboveOrphaned && this.pitches[j] == existingBar.pitchAbove) {
-                            existingBar.pitchAbove.htmlPitchElement.remove();
-                            this.pitches.splice(j, 1);
-                            j--;
-                        } else if (pitchBelowOrphaned && this.pitches[j] == existingBar.pitchBelow) {
-                            existingBar.pitchBelow.htmlPitchElement.remove();
-                            this.pitches.splice(j, 1);
-                            j--;
-                        }
-                    }
-                    
-                    // Delete chord if empty
-                    if (this.pitches.length === 0) {
-                        this.deleteSelf();
-                        return 1;
-                    }
-                }
+                return this.removeIntervalBar(existingBar, i);
             } else {
-                // Add bar
-                let bar;
-                if (dim < 0) {
-                    bar = new IntervalBar(this, parent, existingPitch, dim);
-                } else {
-                    bar = new IntervalBar(this, existingPitch, parent, dim);
-                }
-                this.intervalBars.push(bar);
+                this.addIntervalBar(dim, parent, existingPitch);
             }
             return 0;
         } else {
             // Add pitch and interval bar
             let child = new Pitch(this, newPitchVector);
             this.pitches.push(child);
-            let bar;
-            if (dim < 0) {
-                bar = new IntervalBar(this, parent, child, dim);
-            } else {
-                bar = new IntervalBar(this, child, parent, dim);
-            }
-            this.intervalBars.push(bar);
+            this.addIntervalBar(dim, parent, child);
             this.parentSection.refitContent();
             return 0;
         }
@@ -615,9 +622,9 @@ class Chord {
         }
     }
 
-    inputInterval(y, dim) {
+    inputIntervalRawY(y, dim) {
         let pitch = this.findNearestPitch(y);
-        this.addPitch(pitch.transformedVector.slice(1), dim);
+        this.inputInterval(pitch.transformedVector.slice(1), dim);
     }
 
     /**
@@ -743,7 +750,6 @@ function populateSettingsElement() {
 }
 
 function settingsChanged(event) {
-    console.log("settings changed");
     let key = event.target.getAttribute("settings-key")
     let rawValue = event.target.value;
     let meta = settingsMetaInfo[key];
@@ -898,7 +904,8 @@ function build1dAsentSymbol() {
  */
 function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classes="intervalBar") {
     const height = Math.log2(getPureInterval(settings.axes[dim])) * settings.octaveScale;
-    const defaultWidth = 8;
+    const defaultWidth = settings.intervalBarWidth;
+    const halfPitchWidth = settings.pitchLineWidth / 2;
     let startX = (dim == 3 || dim == 5 || dim == 7)? x2:x1;
     if (descending) {
         startY += height;
@@ -915,17 +922,17 @@ function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classe
             return viewport.appendChild(bar);
             break;
         case 2:
-            return addLine(x1, x1, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addLine(x1, x1, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 3:
-            return addLine(x2, x2, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addLine(x2, x2, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 4:
-            return addRhombusLine(x1, x2, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addRhombusLine(x1, x2, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 5:
-            return addRhombusLine(x2, x1, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addRhombusLine(x2, x1, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 6:
-            return addCurveLine(x1, -8, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addCurveLine(x1, -8, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 7:
-            return addCurveLine(x2, 8, startY, startY-height, settings.axisColors[dim], opacity, defaultWidth, classes);
+            return addCurveLine(x2, 8, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         default:
             return null;
     }
@@ -1031,7 +1038,7 @@ function mouseClickInput(x, y) {
         newChord = true;
     }
     if (!(selectedDimension === 0 && newChord)) {
-        section.chords[chordIndex].inputInterval(event.offsetY, selectedDimension * selectedDirection);
+        section.chords[chordIndex].inputIntervalRawY(event.offsetY, selectedDimension * selectedDirection);
     }
     if (chordIndex === section.chords.length - 1) {
         section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);

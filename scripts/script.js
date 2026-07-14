@@ -1239,14 +1239,14 @@ function mouseClickInput(x, y) {
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
 
-    let chordIndex = section.findNearestChordIndex(event.offsetX);
+    let chordIndex = section.findNearestChordIndex(x);
     let newChord = false;
     if (chordIndex === section.chords.length) {
-        section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(event.offsetY)));
+        section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(y)));
         newChord = true;
     }
     if (!(selectedDimension === 0 && newChord)) {
-        section.chords[chordIndex].inputIntervalRawY(event.offsetY, selectedDimension * selectedDirection);
+        section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
     }
     if (chordIndex === section.chords.length - 1) {
         section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
@@ -1299,7 +1299,7 @@ viewport.addEventListener("mousedown", (event) => {
 const cancelInputRadius = 25;
 viewport.addEventListener("mouseup", (event) => {
     if ((mouseDownX - event.offsetX)**2 + (mouseDownY - event.offsetY)**2 > cancelInputRadius ** 2) return;
-    mouseClickInput(mouseDownX, mouseDownY);
+    mouseClickInput(mouseDownX - horizPadding, mouseDownY - vertPadding);
     mouseIsDown = false;
 });
 

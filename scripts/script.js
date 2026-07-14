@@ -76,7 +76,7 @@ let settings = {
 
     // CHORD RENDERING SETTINGS
     "chordWidth": 70,
-    "chordSpacing": 45,
+    "chordSpacing": 75,
 
     // TODO: add a setting to automatically use blue pitch lines for chord extensions
 
@@ -360,13 +360,36 @@ class Pitch {
      * @param {Array<number>} transformedVector Pitch coordinate using octave-scaled basis vectors
      * @param {Pitch} relativePitch The Pitch that this one should reference as its parent
      */
-    constructor(parentChord=null, transformedVector=[0]) {
+    constructor(parentChord=null, transformedVector=[0], isRoot=false) {
         this.parentChord = parentChord;
+        this.isRoot = isRoot;
         this.transformedVector = transformedVector;
         this.htmlPitchElement = null;
-        this.htmlIntervalBarElements = [];
+        this.intervalBars = [];
         this.leftOffset = 0;
         this.rightOffset = 0;
+        this.sortRank = -1;
+        this.kin = 0;
+        for (let num of transformedVector) {
+            this.kin += Math.abs(num);
+        }
+    }
+
+    sortBarsByDim() {
+        while (true) {
+            let somethingChanged = false;
+            for (let i = 0; i < this.intervalBars.length - 1; i++) {
+                if (this.intervalBars[i].dim > this.intervalBars[i+1].dim) {
+                    let buf = this.intervalBars[i];
+                    this.intervalBars[i] = this.intervalBars[i+1];
+                    this.intervalBars[i+1] = buf;
+                    somethingChanged = true;
+                } 
+            }
+            if (somethingChanged === false) {
+                return;
+            }
+        }
     }
 
     static intervalsEqual(a, b) {
@@ -396,6 +419,10 @@ class Pitch {
         return Math.log2(referenceFreq * this.getRatio() / C_0) * settings.octaveScale * -1;
     }
 
+    relateBar(bar) {
+        this.intervalBars.push(bar);
+    }
+
     addToViewport(x, referenceFreq) {
         let thisY = this.getRelativeY(referenceFreq);
         this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
@@ -409,6 +436,17 @@ class IntervalBar {
         this.dim = Math.abs(dim);
         this.parentChord = parentChord;
         this.htmlBarElement = null;
+        this.leftOffset = 0;
+        this.rightOffset = 0;
+        this.sortRank = -1;
+    }
+
+    // return true if the parameter pitch is between (not equal) to the interval's bounding pitches
+    encompassesPitch(p) {
+        let pRatio = p.getRatio();
+        let minRatio = this.pitchBelow.getRatio();
+        let maxRatio = this.pitchAbove.getRatio();
+        return minRatio < pRatio && pRatio < maxRatio;
     }
 
     hasPitch(p) {
@@ -417,16 +455,18 @@ class IntervalBar {
 
     addToViewport(x, referenceFreq) {
         let thisY = Math.log2(referenceFreq * this.pitchBelow.getRatio() / C_0) * settings.octaveScale * -1;
-        this.htmlBarElement = addIntervalBar(Math.abs(this.dim), x, x + settings.chordWidth, thisY, 1, false, "intervalBar " + this.parentChord.uid);
+        this.htmlBarElement = addIntervalBar(Math.abs(this.dim), x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, 1, false, "intervalBar " + this.parentChord.uid);
     }
 }
 
 class Chord {
     constructor(relativeFreq, parentSection=null, root=[0]) {
         this.relativeFreq = relativeFreq;
-        this.parentSection = parentSection
-        this.pitches = [new Pitch(this, root)];
+        this.parentSection = parentSection;
+        this.rootPitch = new Pitch(this, root, true);
+        this.pitches = [this.rootPitch];
         if (this.parentSection) { this.parentSection.refitContent(); }
+        /** @type {Array<IntervalBar>} */
         this.intervalBars = [];
         this.width = settings.chordWidth;
         this.uid = newUniqueId();
@@ -518,12 +558,25 @@ class Chord {
             bar = new IntervalBar(this, child, parent, dim);
         }
         this.intervalBars.push(bar);
+        parent.relateBar(bar);
+        child.relateBar(bar);
     }
 
     // Remove an interval bar including its terminal pitch(es) if they have no other connecting intervals
     removeIntervalBar(bar, i) {
         let existingBar = bar;
-        // Remove bar
+        // Remove bar from pitches
+        for (let j in bar.pitchAbove.intervalBars) {
+            if (bar.pitchAbove.intervalBars[j] === bar) {
+                bar.pitchAbove.intervalBars.splice(j, 1);
+            }
+        }
+        for (let j in bar.pitchBelow.intervalBars) {
+            if (bar.pitchBelow.intervalBars[j] === bar) {
+                bar.pitchBelow.intervalBars.splice(j, 1);
+            }
+        }
+        // Remove bar from chord
         if(existingBar.htmlBarElement) {existingBar.htmlBarElement.remove();}
         this.intervalBars.splice(i, 1);
 
@@ -646,7 +699,162 @@ class Chord {
         return closestPitch;
     }
 
+    /** Return the list of interval bars stacked immediately on top or below the given one.
+     * @param {IntervalBar} bar
+     * @param {boolean} ascending
+     */
+    getBarStack(bar, calledFrom=null) {
+        let stackedBarList = [...bar.pitchAbove.intervalBars, ...bar.pitchBelow.intervalBars];
+        let result = [bar];
+        for (let stackedBar of stackedBarList) {
+            if (stackedBar === bar) continue;
+            if (stackedBar === calledFrom) continue;
+            if (stackedBar.dim !== bar.dim) continue;
+            result = [...result, ...this.getBarStack(stackedBar, bar)];
+        }
+        return result;
+    }
+
+    // Sort the chord's pitch list for element untangling
+    sortPitches() {
+        // const sortBy = (a, b) => { return a.kin < b.kin; }
+
+        // // TODO: use a real sorting algorithm
+        // for (let i = 0; i < this.pitches.length; i++) {
+        //     for (let j = i + 1; j < this.pitches.length; j++) {
+        //         if (sortBy(this.pitches[j], this.pitches[i])) {
+        //             let buf = this.pitches[i];
+        //             this.pitches[i] = this.pitches[j];
+        //             this.pitches[j] = buf;
+        //         }
+        //     }
+        // }
+        let sorted = [];
+        let hasBeenSorted = (p) => {
+            for (let already of sorted) {
+                if (already === p) return true;
+            }
+            return false;
+        };
+        let active = [this.rootPitch];
+        let count = 0;
+        while (active.length !== 0) {
+            let pitch = active[0];
+            if (!hasBeenSorted(pitch)) {
+                pitch.sortBarsByDim();
+                pitch.sortRank = count;
+                count++;
+                sorted.push(pitch);
+                for (let connectedBar of pitch.intervalBars) {
+                    if (connectedBar.dim === 2 || connectedBar.dim === 3) {
+                        let stack = this.getBarStack(connectedBar);
+                        for (let bar of stack) {
+                            active.push(bar.pitchAbove);
+                            active.push(bar.pitchBelow);
+                            bar.sortRank = count;
+                            count++;
+                        }
+                    } else {
+                        active.push(connectedBar.pitchAbove);
+                        active.push(connectedBar.pitchBelow);
+                    }
+                }
+            }
+            active.shift();
+            if (active.length === 0 && this.pitches.length !== sorted.length) {
+                for (let pitch of this.pitches) {
+                    if (!hasBeenSorted(pitch)) {
+                        active.push(pitch);
+                        break;
+                    }
+                }
+            }
+        }
+        if (active.length === 0 && this.pitches.length !== sorted.length) {
+            console.error("sort pitches failed");
+            return;
+        }
+        this.pitches = sorted;
+    }
+
+    // Move html components to reduce collisions
+    untangleElements() {
+        const offsetDistance = settings.intervalBarWidth * 1.4;
+        this.sortPitches();
+
+        for (let pitch of this.pitches) {
+            let leftBars = [];
+            let rightBars = [];
+            for (let bar of this.intervalBars) {
+                if (bar.encompassesPitch(pitch)) {
+                    if (bar.dim === 2) {
+                        leftBars.push(bar);
+                    } else if (bar.dim == 3) {
+                        rightBars.push(bar);
+                    }
+                    // TODO: add dim 4 and 5 if the pitch is sufficiently close to an endpoint of the bar (bar is close to one side or the other)
+                }
+            }
+
+            let leftOffsetCount = 0;
+            let rightOffsetCount = 0;
+            for (let bar of leftBars) {
+                let barRank = Math.min(bar.pitchAbove.sortRank, bar.pitchBelow.sortRank);
+                if (barRank < pitch.sortRank) {
+                    leftOffsetCount++;
+                }
+            }
+            for (let bar of rightBars) {
+                let barRank = Math.min(bar.pitchAbove.sortRank, bar.pitchBelow.sortRank);
+                if (barRank < pitch.sortRank) {
+                    rightOffsetCount++;
+                }
+            }
+
+            let leftOffset = leftOffsetCount * offsetDistance;
+            let rightOffset = rightOffsetCount * offsetDistance * -1;
+            // for (let bar of pitch.intervalBars) {
+            //     leftOffset = Math.max(leftOffset);
+            //     rightOffset = Math.max(rightOffset);
+            // }
+            for (let bar of pitch.intervalBars) {
+                bar.leftOffset = leftOffset;
+                bar.rightOffset = rightOffset;
+            }
+            pitch.leftOffset = leftOffset;
+            pitch.rightOffset = rightOffset;
+        }
+        for (let bar of this.intervalBars) {
+            if (bar.dim === 2 || bar.dim === 3) {
+                bar.leftOffset = Math.max(bar.pitchAbove.leftOffset, bar.pitchBelow.leftOffset);
+                bar.rightOffset = Math.min(bar.pitchAbove.rightOffset, bar.pitchBelow.rightOffset);
+            }
+            if (bar.dim === 4) {
+                bar.leftOffset = bar.pitchBelow.leftOffset;
+                bar.rightOffset = bar.pitchAbove.rightOffset;
+            }
+            if (bar.dim === 5) {
+                bar.leftOffset = bar.pitchAbove.leftOffset;
+                bar.rightOffset = bar.pitchBelow.rightOffset;
+            }
+
+            if (bar.dim === 2 || bar.dim === 5 || bar.dim === 6) {
+                bar.pitchAbove.leftOffset = bar.leftOffset;
+            }
+            if (bar.dim === 2 || bar.dim === 4 || bar.dim === 6) {
+                bar.pitchBelow.leftOffset = bar.leftOffset;
+            }
+            if (bar.dim === 3 || bar.dim === 4 || bar.dim === 7) {
+                bar.pitchAbove.rightOffset = bar.rightOffset;
+            }
+            if (bar.dim === 3 || bar.dim === 5 || bar.dim === 7) {
+                bar.pitchBelow.rightOffset = bar.rightOffset;
+            }
+        }
+    }
+
     addToViewport(x) {
+        this.untangleElements();
         // TODO: Reduce unnecessary operations
         document.querySelectorAll("." + this.uid).forEach(el => {
             el.remove();

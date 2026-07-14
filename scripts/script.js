@@ -1265,10 +1265,12 @@ let mouseX = 0;
 let mouseY = 0;
 
 viewport.addEventListener("mousemove", (event) => {
-    mouseX = event.offsetX;
-    mouseY = event.offsetY;
-    setSelectedPitch(event.offsetX - horizPadding, event.offsetY - vertPadding)
-    setPreviewPitch(event.offsetX - horizPadding, event.offsetY - vertPadding);
+    if (!mouseIsDown) {
+        mouseX = event.offsetX;
+        mouseY = event.offsetY;
+    }
+    setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding)
+    setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
 });
 
 viewportContainer.addEventListener("mouseleave", (event) => {
@@ -1287,15 +1289,18 @@ viewportContainer.addEventListener("mouseleave", (event) => {
 
 let mouseDownX;
 let mouseDownY;
+let mouseIsDown = false;
 viewport.addEventListener("mousedown", (event) => {
     mouseDownX = event.offsetX;
     mouseDownY = event.offsetY;
+    mouseIsDown = true;
 });
 
 const cancelInputRadius = 25;
 viewport.addEventListener("mouseup", (event) => {
     if ((mouseDownX - event.offsetX)**2 + (mouseDownY - event.offsetY)**2 > cancelInputRadius ** 2) return;
-    mouseClickInput(event.offsetX, event.offsetY)
+    mouseClickInput(mouseDownX, mouseDownY);
+    mouseIsDown = false;
 });
 
 document.addEventListener("keypress", (event) => {

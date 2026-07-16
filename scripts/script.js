@@ -1264,20 +1264,35 @@ function mouseClickInput(x, y) {
 let mouseX = 0;
 let mouseY = 0;
 
+const cancelInputRadius = 35;
+let cancelMouseInput = false;
 viewport.addEventListener("mousemove", (event) => {
-    if (!mouseIsDown) {
-        mouseX = event.offsetX;
-        mouseY = event.offsetY;
+    mouseX = event.offsetX;
+    mouseY = event.offsetY;
+    if (mouseIsDown && (mouseDownX - mouseX) ** 2 + (mouseDownY - mouseY) **2 > cancelInputRadius **2) {
+        if (selectedPitch) {
+            selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
+            selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
+        }
+        if (previewPitch !== null) {
+            cancelMouseInput = true;
+            previewPitchElement.remove();
+            if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
+            previewBasePitchElement.remove();
+            previewPitch = null;
+        }
     }
-    setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding)
-    setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
+    if (!cancelMouseInput && !mouseIsDown) {
+        setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding)
+        setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
+    }
 });
 
 viewportContainer.addEventListener("mouseleave", (event) => {
-    document.querySelectorAll(".pitchLine").forEach((el) => {
-        el.setAttribute("stroke", settings.pitchLineColor);
-        el.setAttribute("stroke-width", settings.pitchLineWidth);
-    });
+    if (selectedPitch) {
+        selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
+        selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
+    }
 
     if (previewPitch !== null) {
         previewPitchElement.remove();
@@ -1291,16 +1306,23 @@ let mouseDownX;
 let mouseDownY;
 let mouseIsDown = false;
 viewport.addEventListener("mousedown", (event) => {
-    mouseDownX = event.offsetX;
-    mouseDownY = event.offsetY;
-    mouseIsDown = true;
+    if (event.button == 0) {
+        mouseDownX = event.offsetX;
+        mouseDownY = event.offsetY;
+        mouseIsDown = true;
+    }
 });
 
-const cancelInputRadius = 25;
 viewport.addEventListener("mouseup", (event) => {
-    if ((mouseDownX - event.offsetX)**2 + (mouseDownY - event.offsetY)**2 > cancelInputRadius ** 2) return;
-    mouseClickInput(mouseDownX - horizPadding, mouseDownY - vertPadding);
     mouseIsDown = false;
+    if (cancelMouseInput) {
+        cancelMouseInput = false;
+        return;
+    }
+    cancelMouseInput = false;
+    if (event.button == 0) {
+        mouseClickInput(mouseDownX - horizPadding, mouseDownY - vertPadding);
+    }
 });
 
 document.addEventListener("keypress", (event) => {

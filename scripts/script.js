@@ -9,6 +9,7 @@ const C_0 = 16.3516 //hz
 let selectedDimension = 2;
 let selectedDirection = 1;
 
+/** @type {Pitch|null} */
 let selectedPitch = null; // Hovered over / highlighted pitch
 
 let viewportX = 0;
@@ -363,12 +364,16 @@ class Pitch {
     constructor(parentChord=null, transformedVector=[0], isRoot=false) {
         this.parentChord = parentChord;
         this.isRoot = isRoot;
+        this.isSelected = false;
+        this.isSounding = true;
+        this.lowOpacity = false;
         this.transformedVector = transformedVector;
         this.htmlPitchElement = null;
         this.intervalBars = [];
         this.leftOffset = 0;
         this.rightOffset = 0;
         this.sortRank = -1;
+        this.viewportX;
         this.kin = 0;
         for (let num of transformedVector) {
             this.kin += Math.abs(num);
@@ -423,9 +428,49 @@ class Pitch {
         this.intervalBars.push(bar);
     }
 
+    redrawParentChord() {
+        this.parentChord.addToViewport(this.parentChord.viewportX);
+    }
+
+    // TODO: use parameter x instead of global mouseX
+    updateSettings() {
+        const centerX = this.viewportX + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
+        if (mouseX < centerX) {
+            this.isSounding = !this.isSounding;
+        } else {
+            this.lowOpacity = !this.lowOpacity;
+        }
+        this.isSelected = false;
+        
+    }
+
     addToViewport(x, referenceFreq) {
+        this.viewportX = x;
         let thisY = this.getRelativeY(referenceFreq);
-        this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+        if (this.isSelected) {
+            if (selectedDimension === 0) {
+                const centerX = x + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
+                let leftHalf = addPitchLine(x + this.leftOffset, centerX, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+                leftHalf.setAttribute("stroke-dasharray", "5, 5");
+                let rightHalf = addPitchLine(centerX, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+                let group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                group.appendChild(leftHalf);
+                group.appendChild(rightHalf);
+                group.setAttribute("class", "selectedPitchOptions " + this.parentChord.uid);
+                viewport.appendChild(group);
+                this.htmlPitchElement = group;
+            } else {
+                this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineSelectedWidth, "pitchLine selected chord " + this.parentChord.uid);
+            }
+        } else {
+            this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+            if (!this.isSounding) {
+                this.htmlPitchElement.setAttribute("stroke-dasharray", "5, 5");
+            }
+            if (this.lowOpacity) {
+                this.htmlPitchElement.setAttribute("opacity", 0.5);
+            }
+        }
     }
 }
 
@@ -470,6 +515,7 @@ class Chord {
         this.intervalBars = [];
         this.width = settings.chordWidth;
         this.uid = newUniqueId();
+        this.viewportX;
     }
 
     /** @returns {number} */
@@ -677,15 +723,18 @@ class Chord {
 
     inputIntervalRawY(y, dim) {
         let pitch = this.findNearestPitch(y);
-        this.inputInterval(pitch.transformedVector.slice(1), dim);
+        if (dim === 0) {
+            pitch.updateSettings();
+        } else {
+            this.inputInterval(pitch.transformedVector.slice(1), dim);
+        }
     }
 
     /**
      * Returns the pitch in the chord nearest to the given y coordinate in the svg.
      * @param {number} y 
      */
-    findNearestPitch(y) {
-        const nullDistance = 80;
+    findNearestPitch(y, nullDistance=30) {
         let minDistance = Infinity;
         let closestPitch = null;
         for (let p of this.pitches) {
@@ -854,6 +903,7 @@ class Chord {
     }
 
     addToViewport(x) {
+        this.viewportX = x;
         this.untangleElements();
         // TODO: Reduce unnecessary operations
         document.querySelectorAll("." + this.uid).forEach(el => {
@@ -1211,26 +1261,31 @@ function setPreviewPitch(x, y) {
 function setSelectedPitch(x, y) {
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
+    let previouslySelectedPitch = selectedPitch;
 
     if (selectedPitch) {
+        selectedPitch.isSelected = false;
         selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
         selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
+        selectedPitch.redrawParentChord();
     }
 
     let chordIndex = section.findNearestChordIndex(x);
     if (chordIndex === section.chords.length) {
-
+        if (previouslySelectedPitch) {
+            previouslySelectedPitch.redrawParentChord();
+        }
     } else {
         let chord = section.chords[chordIndex];
         selectedPitch = chord.findNearestPitch(y);
         if (selectedPitch) {
+            selectedPitch.isSelected = true;
             document.querySelectorAll("." + selectedPitch.parentChord.uid + ".pitchLine").forEach((el) => {
                 el.setAttribute("stroke", settings.pitchLineColor);
                 el.setAttribute("stroke-width", settings.pitchLineWidth);
             });
-            selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineSelectedColor);
-            selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineSelectedWidth);
-        }   
+            selectedPitch.redrawParentChord();
+        }
     }
 }
 
@@ -1248,7 +1303,7 @@ function mouseClickInput(x, y) {
     if (!(selectedDimension === 0 && newChord)) {
         section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
     }
-    if (chordIndex === section.chords.length - 1) {
+    if (newChord) {
         section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {
         while (chordIndex < section.chords.length) {
@@ -1257,8 +1312,10 @@ function mouseClickInput(x, y) {
         }
     }
     let deltaViewportY = oldViewportY - saveOldViewportY;
-    setSelectedPitch(x, y - deltaViewportY);
-    setPreviewPitch(x, y - deltaViewportY);
+    if (selectedDimension !== 0 || newChord) {
+        setSelectedPitch(x, y - deltaViewportY);
+        setPreviewPitch(x, y - deltaViewportY);
+    }
 }
 
 let mouseX = 0;
@@ -1283,15 +1340,20 @@ viewport.addEventListener("mousemove", (event) => {
         }
     }
     if (!cancelMouseInput && !mouseIsDown) {
-        setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding)
-        setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
+        setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding);
+        if (selectedDimension === 0) {
+            
+        } else {
+            setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
+        }
     }
 });
 
 viewportContainer.addEventListener("mouseleave", (event) => {
     if (selectedPitch) {
-        selectedPitch.htmlPitchElement.setAttribute("stroke", settings.pitchLineColor);
-        selectedPitch.htmlPitchElement.setAttribute("stroke-width", settings.pitchLineWidth);
+        selectedPitch.isSelected = false;
+        selectedPitch.redrawParentChord();
+        selectedPitch = null;
     }
 
     if (previewPitch !== null) {

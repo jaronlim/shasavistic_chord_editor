@@ -608,6 +608,12 @@ class Chord {
             this.deleteSelf();
             return 1;
         }
+
+        // Set new root pitch arbitrarily if deleted
+        if (pitch === this.rootPitch) {
+            this.rootPitch = this.pitches[0];
+        }
+
         return 0;
     }
 
@@ -653,24 +659,17 @@ class Chord {
                 pitchBelowOrphaned = false;
             }
         }
-        if (pitchAboveOrphaned || pitchBelowOrphaned) {
-            for (let j = 0; j < this.pitches.length; j++) {
-                if (pitchAboveOrphaned && this.pitches[j] == existingBar.pitchAbove) {
-                    existingBar.pitchAbove.htmlPitchElement.remove();
-                    this.pitches.splice(j, 1);
-                    j--;
-                } else if (pitchBelowOrphaned && this.pitches[j] == existingBar.pitchBelow) {
-                    existingBar.pitchBelow.htmlPitchElement.remove();
-                    this.pitches.splice(j, 1);
-                    j--;
-                }
-            }
-            
-            // Delete chord if empty
-            if (this.pitches.length === 0) {
-                this.deleteSelf();
-                return 1;
-            }
+        if (pitchAboveOrphaned) {
+            this.removePitch(existingBar.pitchAbove);
+        }
+        if (pitchBelowOrphaned) {
+            this.removePitch(existingBar.pitchBelow);
+        }
+
+        // Delete chord if empty
+        if (this.pitches.length === 0) {
+            this.deleteSelf();
+            return 1;
         }
     }
 
@@ -782,18 +781,10 @@ class Chord {
 
     // Sort the chord's pitch list for element untangling
     sortPitches() {
-        // const sortBy = (a, b) => { return a.kin < b.kin; }
+        if (this.pitches.length === 0) {
+            return;
+        }
 
-        // // TODO: use a real sorting algorithm
-        // for (let i = 0; i < this.pitches.length; i++) {
-        //     for (let j = i + 1; j < this.pitches.length; j++) {
-        //         if (sortBy(this.pitches[j], this.pitches[i])) {
-        //             let buf = this.pitches[i];
-        //             this.pitches[i] = this.pitches[j];
-        //             this.pitches[j] = buf;
-        //         }
-        //     }
-        // }
         let sorted = [];
         let hasBeenSorted = (p) => {
             for (let already of sorted) {

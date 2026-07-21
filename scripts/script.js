@@ -326,31 +326,35 @@ class KeyArea {
 
         // Primary Below
         let thisY = tonicY + primaryIntervalHeight;
-        while (thisY < maxY + primaryIntervalHeight) {
+        while (thisY < maxY) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Primary Above
         thisY = tonicY - primaryIntervalHeight;
-        while (thisY > minY - primaryIntervalHeight) {
+        while (thisY > minY) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.primaryAxis], settings.primaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
 
         // Secondary Below
         thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
-        while (thisY < maxY + primaryIntervalHeight) {
+        while (thisY < maxY) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY += primaryIntervalHeight;
         }
 
         // Secondary Above
         thisY = tonicY - secondaryIntervalHeight;
-        while (thisY > minY - primaryIntervalHeight) {
+        while (thisY > minY) {
             this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[this.secondaryAxis], settings.secondaryLineOpacity, settings.pitchLineWidth, `keyArea ${this.uid}`)));
             thisY -= primaryIntervalHeight;
         }
+
+        // Ensure correct vertical sizing for centering and scroll
+        this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, minX, tonicY - viewportContainer.offsetHeight/2, tonicY + viewportContainer.offsetHeight/2, "pink", 0, 1, `keyArea ${this.uid} scrollHelper`)));
+
         return 0;
     }
 }
@@ -1077,7 +1081,7 @@ function refitSvgContent() {
     }
     viewport.setAttribute("viewBox", `${bbox.x - horizPadding} ${viewportY - vertPadding} ${bbox.width + horizPadding * 2} ${viewportHeight + vertPadding * 2}`);
     viewport.setAttribute("width", bbox.width + horizPadding * 2);
-    viewport.setAttribute("height", viewportHeight + vertPadding * 2);
+    viewport.setAttribute("height", viewportHeight);
     if (oldViewportY) {
         viewportContainer.scrollTop += oldViewportY - viewportY;
     } else {

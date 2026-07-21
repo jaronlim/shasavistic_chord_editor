@@ -912,9 +912,9 @@ class Chord {
             let hasLeft = false;
             let hasRight = false;
             for (let bar of pitch.intervalBars) {
-                if (bar.dim === 2 || (bar.dim === 4 && bar.pitchBelow === pitch) || (bar.dim === 5 && bar.pitchAbove === pitch)) {
+                if (bar.dim === 2 || bar.dim === 6 || (bar.dim === 4 && bar.pitchBelow === pitch) || (bar.dim === 5 && bar.pitchAbove === pitch)) {
                     hasLeft = true;
-                } else if (bar.dim == 3 || (bar.dim === 4 && bar.pitchAbove === pitch) || (bar.dim === 5 & bar.pitchBelow === pitch)) {
+                } else if (bar.dim == 3 || bar.dim === 7 || (bar.dim === 4 && bar.pitchAbove === pitch) || (bar.dim === 5 & bar.pitchBelow === pitch)) {
                     hasRight = true;
                 }
             }
@@ -1318,13 +1318,14 @@ function mouseClickInput(x, y) {
 
     let chordIndex = section.findNearestChordIndex(x);
     let newChord = false;
-    if (chordIndex === section.chords.length) {
+    if (selectedDimension !== 0 && chordIndex === section.chords.length) {
         section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(y)));
         newChord = true;
     }
-    if (!(selectedDimension === 0 && newChord)) {
-        section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
+    if (selectedDimension === 0 && chordIndex === section.chords.length) {
+        return;
     }
+    section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
     if (newChord) {
         section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {

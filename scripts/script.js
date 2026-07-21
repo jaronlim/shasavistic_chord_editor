@@ -907,6 +907,21 @@ class Chord {
                 bar.pitchBelow.rightOffset = bar.rightOffset;
             }
         }
+        // Do not intersect pitch with its bars
+        for (let pitch of this.pitches) {
+            let hasLeft = false;
+            let hasRight = false;
+            for (let bar of pitch.intervalBars) {
+                if (bar.dim === 2 || (bar.dim === 4 && bar.pitchBelow === pitch) || (bar.dim === 5 && bar.pitchAbove === pitch)) {
+                    hasLeft = true;
+                } else if (bar.dim == 3 || (bar.dim === 4 && bar.pitchAbove === pitch) || (bar.dim === 5 & bar.pitchBelow === pitch)) {
+                    hasRight = true;
+                }
+            }
+            const halfBarWidth = settings.intervalBarWidth / 2;
+            pitch.leftOffset += hasLeft ? halfBarWidth : 0;
+            pitch.rightOffset -= hasRight ? halfBarWidth : 0;
+        }
     }
 
     addToViewport(x) {

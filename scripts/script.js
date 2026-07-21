@@ -1337,8 +1337,8 @@ function mouseClickInput(x, y) {
     let deltaViewportY = oldViewportY - saveOldViewportY;
     if (selectedDimension !== 0 || newChord) {
         setPreviewPitch(x, y - deltaViewportY);
+        setSelectedPitch(x, y - deltaViewportY);
     }
-    setSelectedPitch(x, y - deltaViewportY);
 }
 
 let mouseX = 0;

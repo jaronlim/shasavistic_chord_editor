@@ -738,7 +738,7 @@ class Chord {
     }
 
     inputIntervalRawY(y, dim) {
-        let pitch = this.findNearestPitch(y);
+        let pitch = this.findNearestPitch(y, Infinity);
         if (dim === 0) {
             pitch.updateSettings();
         } else {

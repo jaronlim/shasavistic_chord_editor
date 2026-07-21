@@ -449,10 +449,22 @@ class Pitch {
         let thisY = this.getRelativeY(referenceFreq);
         if (this.isSelected) {
             if (selectedDimension === 0) {
-                const centerX = x + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
+                let centerX = x + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
                 let leftHalf = addPitchLine(x + this.leftOffset, centerX, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
-                leftHalf.setAttribute("stroke-dasharray", "5, 5");
                 let rightHalf = addPitchLine(centerX, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
+
+                // TODO: use setting for stroke-dasharray
+                if (this.isSounding) {
+                    leftHalf.setAttribute("stroke-dasharray", "5, 5");
+                } else {
+                    rightHalf.setAttribute("stroke-dasharray", "5, 5");
+                }
+                if (this.lowOpacity) {
+                    leftHalf.setAttribute("opacity", 0.5);
+                } else {
+                    rightHalf.setAttribute("opacity", 0.5);
+                }
+
                 let group = document.createElementNS("http://www.w3.org/2000/svg", "g");
                 group.appendChild(leftHalf);
                 group.appendChild(rightHalf);
@@ -1313,9 +1325,9 @@ function mouseClickInput(x, y) {
     }
     let deltaViewportY = oldViewportY - saveOldViewportY;
     if (selectedDimension !== 0 || newChord) {
-        setSelectedPitch(x, y - deltaViewportY);
         setPreviewPitch(x, y - deltaViewportY);
     }
+    setSelectedPitch(x, y - deltaViewportY);
 }
 
 let mouseX = 0;

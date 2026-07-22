@@ -19,8 +19,6 @@ let viewportHeight = 0;
 
 const viewportPaddingX = 50;
 
-viewport.style.backgroundColor = "#676681";
-
 let settings = {
 
     "octaveScale": 120, // TODO: change default ctrl+scroll behavior to zoom
@@ -1449,8 +1447,12 @@ window.addEventListener("resize", (event) => {
     project.fitInWindow();
 });
 
+function initialize() {
+    viewport.style.backgroundColor = settings.chordsBgColor;
+    let project = new Project();
+    project.updateViewport();
+    
+    refitSvgContent();
+}
 
-let project = new Project();
-project.updateViewport();
-
-refitSvgContent();
+initialize();

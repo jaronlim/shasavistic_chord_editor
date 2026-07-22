@@ -1447,9 +1447,9 @@ window.addEventListener("resize", (event) => {
     project.fitInWindow();
 });
 
+let project = new Project();
 function initialize() {
     viewport.style.backgroundColor = settings.chordsBgColor;
-    let project = new Project();
     project.updateViewport();
     
     refitSvgContent();

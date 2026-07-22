@@ -36,6 +36,8 @@ let settings = {
         [-2, 0, 0, 0, 0, 0, 1],
     ],
 
+    "chordsBgColor": "#676681",
+
     "axisColors": [
         "#ffffff",
         "#aaaaaa",
@@ -1259,9 +1261,19 @@ function setPreviewPitch(x, y) {
         // Add interval bar
         previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     } else {
+        // Get hovered pitch
         let chord = section.chords[chordIndex];
         let nearestPitch = chord.findNearestPitch(y);
         if (!nearestPitch) return;
+        // Check for existing bar
+        let barExists = false;
+        for (let existingBar of nearestPitch.intervalBars) {
+            if (existingBar.dim === selectedDimension && (selectedDirection === 1 ? existingBar.pitchBelow : existingBar.pitchAbove) === nearestPitch) {
+                barExists = true;
+                break;
+            }
+        }
+
         let previewPitchVector = [...nearestPitch.transformedVector];
         while (previewPitchVector.length <= Math.abs(selectedDimension)) {
             previewPitchVector.push(0);
@@ -1277,6 +1289,13 @@ function setPreviewPitch(x, y) {
 
         // Add interval bar
         previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
+        if (barExists) {
+            if (selectedDimension === 2 || selectedDimension === 3) {
+                previewIntervalBarElement.setAttribute("stroke", settings.chordsBgColor);
+            } else if (selectedDimension >= 4 && selectedDimension <= 7) {
+                previewIntervalBarElement.setAttribute("fill", settings.chordsBgColor);
+            }
+        }
     }
 }
 

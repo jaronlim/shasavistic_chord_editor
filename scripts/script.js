@@ -91,7 +91,7 @@ class Project {
             "description": description,
         }
         this.referenceFreq = 261.63;
-        this.sections = [new Section(0, new KeyArea(2, 3, 261.63))];
+        this.sections = [];
     }
 
     fitInWindow() {
@@ -99,9 +99,17 @@ class Project {
         this.updateViewport();
     }
 
+    addNewSection(primaryAxis, secondaryAxis, relativeFreq=261.63, transformedTonic=0) {
+        let key = new KeyArea(primaryAxis, secondaryAxis, relativeFreq, transformedTonic);
+        let sect = new Section(0, key);
+        if (this.sections.length >= 1) {
+            this.sections[this.sections.length - 1].isFinalSection = false;
+        }
+        sect.isFinalSection = true;
+        this.sections = [(new Section(0, new KeyArea(primaryAxis, secondaryAxis, relativeFreq, transformedTonic)))];
+    }
+
     addSection(section) {
-        this.sections[this.sections.length - 1].isFinalSection = false;
-        section.isFinalSection = true;
         this.sections.push(section);
     }
 
@@ -123,6 +131,7 @@ class Project {
     updateViewport() {
         let x = 0;
         for (let section of this.sections) {
+            section.startX = x;
             section.addToViewport(x);
             x += section.getWidth();
         }
@@ -210,6 +219,7 @@ class Section {
         
         if (this.keyArea) {
             this.keyArea.addToViewport(startX, startX + width, minY, maxY);
+            console.log(`KEY: ${startX}, ${startX + width}, ${minY}, ${maxY}`);
         }
     }
 
@@ -1052,6 +1062,13 @@ function settingsChanged(event) {
     project.updateViewport();
 }
 
+function addSection() {
+    let primary = Number(document.getElementById("primary-axis-input").value);
+    let secondary = Number(document.getElementById("secondary-axis-input").value);
+    project.addNewSection(primary, secondary, C_0 * 16, [0]);
+    project.updateViewport();
+}
+
 /** pure val to pitch ratio */
 function getPureInterval(arr) {
     let product = 1;
@@ -1077,6 +1094,7 @@ function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
     // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
     const bbox = viewport.getBBox();
+    console.log(bbox);
     viewportX = bbox.x;
     // viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
     viewportY = bbox.y;
@@ -1228,6 +1246,9 @@ let previewBasePitchElement = null;
 let previewIntervalBarElement = null;
 
 function setPreviewPitch(x, y) {
+    if (project.sections.length <= 0) {
+        return;
+    }
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
 
@@ -1298,6 +1319,9 @@ function setPreviewPitch(x, y) {
 }
 
 function setSelectedPitch(x, y) {
+    if (project.sections.length <= 0) {
+        return;
+    }
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
     let previouslySelectedPitch = selectedPitch;
@@ -1450,9 +1474,7 @@ window.addEventListener("resize", (event) => {
 let project = new Project();
 function initialize() {
     viewport.style.backgroundColor = settings.chordsBgColor;
-    project.updateViewport();
-    
-    refitSvgContent();
+
 }
 
 initialize();

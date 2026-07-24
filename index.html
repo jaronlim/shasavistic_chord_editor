@@ -51,6 +51,9 @@
         </div>
         <div id="viewport-frame">
             <div id="viewport-container">
+                <div id="viewport-html-content">
+                    <button id="add-key-area" popovertarget="add-section-popover">+</button>
+                </div>
                 <svg id="viewport">
                     <defs></defs>
                     <g id="keyAreas"></g>
@@ -58,6 +61,11 @@
             </div>
         </div>
         <div popover id="settings-popover"></div>
+        <div popover id="add-section-popover">
+            Primary Axis: <input type="number" min="1" max="7" id="primary-axis-input" value="2">
+            Secondary Axis: <input type="number" min="1" max="7" id="secondary-axis-input" value="4">
+            <button onclick="addSection()" popovertarget="add-section-popover">Add</button>
+        </div>
     </div>
     <script src="scripts/script.js"></script>
     <script src="scripts/settings-handler.js"></script>

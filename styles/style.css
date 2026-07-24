@@ -57,7 +57,6 @@ body {
     scrollbar-color: #9C9BAC #676681;
     scrollbar-width: thin;
 
-    
 }
 
 .hide-scrollbar::-webkit-scrollbar {
@@ -68,10 +67,20 @@ body {
     scrollbar-width: none;
 }
 
+#viewport-html-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
 #viewport {
-  display: block;
-  min-width:100%;
-  min-height:100%;
+    display: block;
+    min-width:100%;
+    min-height:100%;
+    position:absolute;
+    top: 0;
+    left: 0;
 }
 
 #settings-popover:popover-open {

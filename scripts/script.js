@@ -85,12 +85,18 @@ let settings = {
 }
 
 class Project {
+    /**
+     * 
+     * @param {string} title 
+     * @param {string} description 
+     */
     constructor(title="untitled", description="") {
         this.meta = {
             "title": title,
             "description": description,
         }
         this.referenceFreq = 261.63;
+        /** @type {Array<Section>} */
         this.sections = [];
     }
 
@@ -106,7 +112,7 @@ class Project {
             this.sections[this.sections.length - 1].isFinalSection = false;
         }
         sect.isFinalSection = true;
-        this.sections = [(new Section(0, new KeyArea(primaryAxis, secondaryAxis, relativeFreq, transformedTonic)))];
+        this.sections.push(new Section(0, new KeyArea(primaryAxis, secondaryAxis, relativeFreq, transformedTonic)));
     }
 
     addSection(section) {
@@ -120,8 +126,9 @@ class Project {
     // Return the Section that currently occupies the given x position
     getSectionAt(x) {
         if (x < 0) return null;
-        let sum;
-        for (let section of this.sections) {
+        let sum = 0;
+        for (let i = 0; i < this.sections.length; i++) {
+            let section = this.sections[i];
             sum += section.getWidth();
             if (x < sum) return section;
         }
@@ -219,7 +226,6 @@ class Section {
         
         if (this.keyArea) {
             this.keyArea.addToViewport(startX, startX + width, minY, maxY);
-            console.log(`KEY: ${startX}, ${startX + width}, ${minY}, ${maxY}`);
         }
     }
 
@@ -1094,7 +1100,6 @@ function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
     // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
     const bbox = viewport.getBBox();
-    console.log(bbox);
     viewportX = bbox.x;
     // viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
     viewportY = bbox.y;
@@ -1474,7 +1479,7 @@ window.addEventListener("resize", (event) => {
 let project = new Project();
 function initialize() {
     viewport.style.backgroundColor = settings.chordsBgColor;
-
+    document.getElementById("add-section-popover").showPopover();
 }
 
 initialize();

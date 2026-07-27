@@ -52,6 +52,7 @@ let settings = {
 
         "selectAscent": "a",
         "selectDescent": "d",
+        "switchDirection": "q",
     },
 
     "previewPitchOpacity": 0.5,
@@ -1465,6 +1466,7 @@ document.addEventListener("keypress", (event) => {
 
     if (event.key === settings.hotkeys.selectAscent) { menuSelect("dir", 1); needsPreviewPitchRedraw = true; }
     if (event.key === settings.hotkeys.selectDescent) { menuSelect("dir", -1); needsPreviewPitchRedraw = true; }
+    if (event.key === settings.hotkeys.switchDirection) { menuSelect("dir", selectedDirection * -1); needsPreviewPitchRedraw = true; }
 
     if (needsPreviewPitchRedraw) {
         setSelectedPitch(mouseX, mouseY);

@@ -517,9 +517,12 @@ class IntervalBar {
         this.leftOffset = 0;
         this.rightOffset = 0;
         this.sortRank = -1;
+        this.uid = newUniqueId();
     }
 
-    // return true if the parameter pitch is between (not equal) to the interval's bounding pitches
+    /** Return true if the parameter pitch is between (not equal) to the interval's bounding pitches
+     * @param {Pitch} p
+     */
     encompassesPitch(p) {
         let pRatio = p.getRatio();
         let minRatio = this.pitchBelow.getRatio();
@@ -851,7 +854,7 @@ class Chord {
     }
 
     // Move html components to reduce collisions
-    untangleElements() {
+    untangleElementsOLD() {
         const offsetDistance = settings.intervalBarWidth * 1.4;
         this.sortPitches();
 
@@ -938,6 +941,122 @@ class Chord {
             const halfBarWidth = settings.intervalBarWidth / 2;
             pitch.leftOffset += hasLeft ? halfBarWidth : 0;
             pitch.rightOffset -= hasRight ? halfBarWidth : 0;
+        }
+    }
+
+    untangleElements() {
+        // Order is: 2D and 3D bar stacks and connected pitches → all pitches, not
+        // modifying "stable" (already set position) parts of pitches (l/r independent)
+        // → bars of all other dimensions bars connected to the now-set pitch positions
+        
+        
+        const offsetDistance = settings.intervalBarWidth * 1.4;
+
+        let barStacksLeft = [];
+        let barStacksRight = [];
+        let otherBars = [];
+        let barIdsDone = [];
+        for (let bar of this.intervalBars) {
+            if (barIdsDone.includes(bar.uid)) continue;
+
+
+            if (bar.dim !== 2 && bar.dim !== 3) {
+                otherBars.push([bar.pitchBelow.getRatio(), bar.pitchAbove.getRatio()]);
+                continue;
+            }
+            
+            let stack = this.getBarStack(bar);
+            let minRatio = Infinity;
+            let maxRatio = -Infinity;
+            for (let stackedBar of stack) {
+                barIdsDone.push(stackedBar.uid);
+                if (stackedBar.pitchAbove.getRatio() > maxRatio) {
+                    maxRatio = stackedBar.pitchAbove.getRatio();
+                }
+                if (stackedBar.pitchBelow.getRatio() < minRatio) {
+                    minRatio = stackedBar.pitchBelow.getRatio();
+                }
+            }
+            if (bar.dim === 2) {
+                barStacksLeft.push({"min": minRatio, "max": maxRatio, "bars" : stack, "offset": 0});
+            } else if (bar.dim === 3) {
+                barStacksRight.push({"min": minRatio, "max": maxRatio, "bars" : stack, "offset": 0});
+            }
+        }
+
+        // -- Untangle
+        let stablePitchesLeft = new Set(); // sets for automatic duplicate handling
+        let stablePitchesRight = new Set();
+        let stableStacksLeft = []; // stacks that have been set in place (horizantally) and will not move
+        let stableStacksRight = [];
+        // untangle 2D stacks
+        for (let stack of barStacksLeft) {
+            for (let stable of stableStacksLeft) {
+                if ((stack.min > stable.min && stack.min < stable.max) || (stable.min > stack.min && stable.min < stack.max)) {
+                    // the stacks intersect
+                    stack.offset = stable.offset + 1;
+                }
+            }
+            stableStacksLeft.push(stack);
+            for (let bar of stack.bars) {
+                bar.leftOffset = stack.offset * offsetDistance;
+                bar.pitchBelow.leftOffset = stack.offset * offsetDistance; // TODO: include half bar width
+                bar.pitchAbove.leftOffset = stack.offset * offsetDistance; // TODO: include half bar width
+                stablePitchesLeft.add(bar.pitchBelow);
+                stablePitchesLeft.add(bar.pitchAbove);
+            }
+        }
+        // untangle 3D stacks
+        for (let stack of barStacksRight) {
+            for (let stable of stableStacksRight) {
+                if ((stack.min > stable.min && stack.min < stable.max) || (stable.min > stack.min && stable.min < stack.max)) {
+                    // the stacks intersect
+                    stack.offset = stable.offset + 1;
+                }
+            }
+            stableStacksRight.push(stack);
+            for (let bar of stack.bars) {
+                bar.rightOffset = stack.offset * offsetDistance * -1;
+                bar.pitchBelow.rightOffset = stack.offset * offsetDistance * -1; // TODO: include half bar width
+                bar.pitchAbove.rightOffset = stack.offset * offsetDistance * -1; // TODO: include half bar width
+                stablePitchesRight.add(bar.pitchBelow);
+                stablePitchesRight.add(bar.pitchAbove);
+            }
+        }
+
+        // untangle parts of pitches not connected to bar stack
+        for (let pitch of this.pitches) {
+            if (!stablePitchesLeft.has(pitch)) {
+                let leftOffset = 0;
+                for (let stack of barStacksLeft) {
+                    if (pitch.getRatio() > stack.min && pitch.getRatio() < stack.max) {
+                        leftOffset = Math.max(leftOffset, stack.bars[0].leftOffset + offsetDistance);
+                    }
+                }
+                pitch.leftOffset = leftOffset;
+            }
+            if (!stablePitchesRight.has(pitch)) {
+                let rightOffset = 0;
+                for (let stack of barStacksRight) {
+                    if (pitch.getRatio() > stack.min && pitch.getRatio() < stack.max) {
+                        rightOffset = Math.min(rightOffset, stack.bars[0].rightOffset - offsetDistance);
+                    }
+                }
+                pitch.rightOffset = rightOffset;
+            }
+        }
+
+        // fix bars to now-set pitches
+        for (let bar of this.intervalBars) {
+            if (bar.dim === 4) {
+                bar.leftOffset = bar.pitchBelow.leftOffset;
+                bar.rightOffset = bar.pitchAbove.rightOffset;
+            }
+            if (bar.dim === 5) {
+                bar.leftOffset = bar.pitchAbove.leftOffset;
+                bar.rightOffset = bar.pitchBelow.rightOffset;
+            }
+            // TODO: handle 6D and 7D
         }
     }
 

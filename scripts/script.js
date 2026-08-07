@@ -1469,15 +1469,19 @@ function setPreviewPitch(x, y) {
                 }
                 previewIntervalBarElement.setAttribute("points", `${points[0][0]},${points[0][1]} ${points[1][0]},${points[1][1]} ${points[2][0]},${points[2][1]} ${points[3][0]},${points[3][1]}`);
             }
+            previewPitchElement.remove();
+
         } else {
             if (selectedDimension === 2 || selectedDimension === 3) {
                 if (selectedDimension === 2) {
                     previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + nearestPitch.leftOffset);
                     previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + nearestPitch.leftOffset);
+                    previewPitchElement.setAttribute("x1", Number(previewPitchElement.getAttribute("x1")) + nearestPitch.leftOffset);
                 }
                 if (selectedDimension === 3) {
-                        previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + nearestPitch.rightOffset);
-                        previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + nearestPitch.rightOffset);
+                    previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + nearestPitch.rightOffset);
+                    previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + nearestPitch.rightOffset);
+                    previewPitchElement.setAttribute("x2", Number(previewPitchElement.getAttribute("x2")) + nearestPitch.rightOffset);
                 }
             } else if (selectedDimension === 4 || selectedDimension === 5) {
                 let points = previewIntervalBarElement.getAttribute("points").split(" ");

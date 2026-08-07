@@ -6,7 +6,7 @@ const keyAreasViewportGroup = document.getElementById("keyAreas");
 const PRIMES = [2, 3, 5, 7, 11, 13, 17];
 const C_0 = 16.3516 //hz
 
-let selectedDimension = 2;
+let selectedDimension = 2; // 0-7 for dimensions; -1 for pitch editor; -2 for chord preset
 let selectedDirection = 1;
 
 /** @type {Pitch|null} */
@@ -48,7 +48,8 @@ let settings = {
     ],
 
     "hotkeys": {
-        "selectDimension": ["`", "1", "2", "3", "4", "5", "6", "7"],
+        "selectDimension": ["0", "1", "2", "3", "4", "5", "6", "7"],
+        "selectPitchEditor": "`",
 
         "selectAscent": "a",
         "selectDescent": "d",
@@ -188,6 +189,7 @@ class Section {
         let chord = new Chord(relativeFreq, this, root);
         this.chords.push(chord);
         this.refitContent();
+        return chord;
     }
 
     insertChord(index, relativeFreq, root=[0]) {
@@ -469,7 +471,7 @@ class Pitch {
         this.viewportX = x;
         let thisY = this.getRelativeY(referenceFreq);
         if (this.isSelected) {
-            if (selectedDimension === 0) {
+            if (selectedDimension === -1) {
                 let centerX = x + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
                 let leftHalf = addPitchLine(x + this.leftOffset, centerX, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
                 let rightHalf = addPitchLine(centerX, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
@@ -758,7 +760,7 @@ class Chord {
 
     inputIntervalRawY(y, dim) {
         let pitch = this.findNearestPitch(y, Infinity);
-        if (dim === 0) {
+        if (dim === -1) {
             pitch.updateSettings();
         } else {
             this.inputInterval(pitch.transformedVector.slice(1), dim);
@@ -1389,10 +1391,10 @@ function setPreviewPitch(x, y) {
     
     if (chordIndex === section.chords.length) {
         let previewPitchVector = [0];
-        while (previewPitchVector.length <= Math.abs(selectedDimension)) {
+        while (previewPitchVector.length <= selectedDimension) {
             previewPitchVector.push(0);
         }
-        previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
+        previewPitchVector[selectedDimension] += selectedDirection;
         previewPitch = new Pitch(null, previewPitchVector);
         
         let nearestLineVector = keyArea.getNearestLineVector(y);
@@ -1405,7 +1407,7 @@ function setPreviewPitch(x, y) {
         previewBasePitchElement = addPitchLine(thisX, thisX + settings.chordWidth, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
 
         // Add interval bar
-        previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(selectedDimension, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
     } else {
         // Get hovered pitch
         let chord = section.chords[chordIndex];
@@ -1421,12 +1423,14 @@ function setPreviewPitch(x, y) {
         }
 
         let previewPitchVector = [...nearestPitch.transformedVector];
-        while (previewPitchVector.length <= Math.abs(selectedDimension)) {
+        while (previewPitchVector.length <= selectedDimension) {
             previewPitchVector.push(0);
         }
-        previewPitchVector[Math.abs(selectedDimension)] += selectedDirection;
+        previewPitchVector[selectedDimension] += selectedDirection;
         previewPitch = new Pitch(null, previewPitchVector);
         let referenceFreq = chord.relativeFreq;
+
+        if (selectedDimension === -1) return;
 
         // Add pitch line
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
@@ -1434,7 +1438,7 @@ function setPreviewPitch(x, y) {
         previewPitchElement = addPitchLine(thisX, thisX + settings.chordWidth, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
 
         // Add interval bar
-        previewIntervalBarElement = addIntervalBar(Math.abs(selectedDimension), thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(selectedDimension, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
         if (barExists) {
             if (selectedDimension === 2 || selectedDimension === 3) {
                 previewIntervalBarElement.setAttribute("stroke", settings.chordsBgColor);
@@ -1553,17 +1557,17 @@ function mouseClickInput(x, y) {
     let keyArea = section.keyArea;
 
     let chordIndex = section.findNearestChordIndex(x);
-    let newChord = false;
-    if (selectedDimension !== 0 && chordIndex === section.chords.length) {
-        section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(y)));
-        newChord = true;
+    let newChord = null;
+    if (chordIndex === section.chords.length) {
+        newChord = section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(y)));
     }
-    if (selectedDimension === 0 && chordIndex === section.chords.length) {
+    if (selectedDimension === 0 && newChord) {
+        newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
         return;
     }
     section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
     if (newChord) {
-        section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
+        newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {
         while (chordIndex < section.chords.length) {
             section.chords[chordIndex].addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
@@ -1600,7 +1604,7 @@ viewport.addEventListener("mousemove", (event) => {
     }
     if (!cancelMouseInput && !mouseIsDown) {
         setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding);
-        if (selectedDimension === 0) {
+        if (selectedDimension === -1) {
             
         } else {
             setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
@@ -1652,6 +1656,8 @@ document.addEventListener("keypress", (event) => {
         menuSelect("dim", settings.hotkeys.selectDimension.indexOf(event.key));
         needsPreviewPitchRedraw = true;
     }
+
+    if (event.key === settings.hotkeys.selectPitchEditor) { menuSelect("dim", -1); needsPreviewPitchRedraw = true; }
 
     if (event.key === settings.hotkeys.selectAscent) { menuSelect("dir", 1); needsPreviewPitchRedraw = true; }
     if (event.key === settings.hotkeys.selectDescent) { menuSelect("dir", -1); needsPreviewPitchRedraw = true; }

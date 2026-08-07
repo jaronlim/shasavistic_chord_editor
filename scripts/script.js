@@ -1410,10 +1410,10 @@ function setPreviewPitch(x, y) {
         let nearestPitch = chord.findNearestPitch(y);
         if (!nearestPitch) return;
         // Check for existing bar
-        let barExists = false;
+        let barExists = null;
         for (let existingBar of nearestPitch.intervalBars) {
             if (existingBar.dim === selectedDimension && (selectedDirection === 1 ? existingBar.pitchBelow : existingBar.pitchAbove) === nearestPitch) {
-                barExists = true;
+                barExists = existingBar;
                 break;
             }
         }
@@ -1436,8 +1436,36 @@ function setPreviewPitch(x, y) {
         if (barExists) {
             if (selectedDimension === 2 || selectedDimension === 3) {
                 previewIntervalBarElement.setAttribute("stroke", settings.chordsBgColor);
+
+                if (selectedDimension === 2) {
+                    previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + barExists.leftOffset);
+                    previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + barExists.leftOffset);
+                }
+                if (selectedDimension === 3) {
+                    previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + barExists.rightOffset);
+                    previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + barExists.rightOffset);
+                }
             } else if (selectedDimension >= 4 && selectedDimension <= 7) {
                 previewIntervalBarElement.setAttribute("fill", settings.chordsBgColor);
+
+                let points = previewIntervalBarElement.getAttribute("points").split(" ");
+                for (let i = 0; i < points.length; i++) {
+                    points[i] = points[i].split(",").map(Number);
+                    points[i][0] = points[i][0];
+                }
+                if (selectedDimension === 4) {
+                    points[0][0] += barExists.leftOffset;
+                    points[1][0] += barExists.leftOffset;
+                    points[2][0] += barExists.rightOffset;
+                    points[3][0] += barExists.rightOffset;
+                }
+                if (selectedDimension === 5) {
+                    points[0][0] += barExists.rightOffset;
+                    points[1][0] += barExists.rightOffset;
+                    points[2][0] += barExists.leftOffset;
+                    points[3][0] += barExists.leftOffset;
+                }
+                previewIntervalBarElement.setAttribute("points", `${points[0][0]},${points[0][1]} ${points[1][0]},${points[1][1]} ${points[2][0]},${points[2][1]} ${points[3][0]},${points[3][1]}`);
             }
         }
     }

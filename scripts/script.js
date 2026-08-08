@@ -636,6 +636,7 @@ class Chord {
             this.rootPitch = this.pitches[0];
         }
 
+        this.parentSection.refitContent();
         return 0;
     }
 
@@ -1575,7 +1576,7 @@ function mouseClickInput(x, y) {
         }
     }
     let deltaViewportY = oldViewportY - saveOldViewportY;
-    if (selectedDimension !== 0 || newChord) {
+    if (selectedDimension !== -1 || newChord) {
         setPreviewPitch(x, y - deltaViewportY);
         setSelectedPitch(x, y - deltaViewportY);
     }

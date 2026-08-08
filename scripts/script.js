@@ -1222,6 +1222,7 @@ const horizPadding = 0;
 function refitSvgContent() {
     // TODO: fix slightly broken bounds when bbox height < viewport height (ie no chords exist, only keyArea)
     // TODO: smoothly scroll back to the allowed area if the viewport bounds shrink
+    const oldScrollTop = viewportContainer.scrollTop; // variable to prevent setAttribute("height") from affecting scroll
     const bbox = viewport.getBBox();
     viewportX = bbox.x;
     // viewportY = Math.min(bbox.y, bbox.y + (viewport.clientHeight - bbox.height));
@@ -1235,7 +1236,7 @@ function refitSvgContent() {
     viewport.setAttribute("width", bbox.width + horizPadding * 2);
     viewport.setAttribute("height", viewportHeight);
     if (oldViewportY) {
-        viewportContainer.scrollTop += oldViewportY - viewportY;
+        viewportContainer.scrollTop = oldScrollTop + oldViewportY - viewportY;
     } else {
         viewportContainer.scrollTop = ((viewportHeight + vertPadding * 2) - viewportContainer.clientHeight) / 2; // Initialize scroll to center
     }

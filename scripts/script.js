@@ -700,8 +700,9 @@ class Chord {
      * Add or remove an interval from the chord, relative to an existing pitch
      * @param {Array<number>} fromVector The relative pitch on which to stack the new interval (val: starts at prime 2)
      * @param {number} dim 
+     * @param {number} dir 
      */
-    inputInterval(fromVector, dim) {
+    inputInterval(fromVector, dim, dir) {
         fromVector.unshift(0);
         // Check that parent exists
         let parent = this.getPitch(fromVector);
@@ -714,7 +715,7 @@ class Chord {
         while (newPitchVector.length <= Math.abs(dim)) {
             newPitchVector.push(0);
         }
-        newPitchVector[Math.abs(dim)] += Math.sign(dim);
+        newPitchVector[Math.abs(dim)] += dir;
         let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
             // In the case of 0D, remove pitch and all associated interval bars
@@ -736,14 +737,14 @@ class Chord {
             if (existingBar) {
                 return this.removeIntervalBar(existingBar, i);
             } else {
-                this.addIntervalBar(dim, parent, existingPitch);
+                this.addIntervalBar(dim * dir, parent, existingPitch);
             }
             return 0;
         } else {
             // Add pitch and interval bar
             let child = new Pitch(this, newPitchVector);
             this.pitches.push(child);
-            this.addIntervalBar(dim, parent, child);
+            this.addIntervalBar(dim * dir, parent, child);
             this.parentSection.refitContent();
             return 0;
         }
@@ -759,12 +760,12 @@ class Chord {
         }
     }
 
-    inputIntervalRawY(y, dim) {
+    inputIntervalRawY(y, dim, dir) {
         let pitch = this.findNearestPitch(y, Infinity);
         if (dim === -1) {
             pitch.updateSettings();
         } else {
-            this.inputInterval(pitch.transformedVector.slice(1), dim);
+            this.inputInterval(pitch.transformedVector.slice(1), dim, dir);
         }
     }
 
@@ -1567,7 +1568,7 @@ function mouseClickInput(x, y) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
         return;
     }
-    section.chords[chordIndex].inputIntervalRawY(y, selectedDimension * selectedDirection);
+    section.chords[chordIndex].inputIntervalRawY(y, selectedDimension, selectedDirection);
     if (newChord) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {

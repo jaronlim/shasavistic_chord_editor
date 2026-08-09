@@ -20,6 +20,7 @@ function makeSound(freq, wave="saw", a=0.1, d=4, s=0, r=0) {
 
 document.addEventListener("keypress", (e) => {
     if (e.key === " ") {
+        e.preventDefault();
         let section = project.getSectionAt(mouseX);
         let keyArea = section.keyArea;
         let chord = section.chords[section.findNearestChordIndex(mouseX)];

@@ -240,7 +240,7 @@ class Section {
         let x = startX + settings.leftPadding;
         for (let chord of this.chords) {
             chord.addToViewport(x);
-            x += chord.width;
+            x += chord.width + chordSpacing;
         }
     }
 }

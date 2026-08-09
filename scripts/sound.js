@@ -8,7 +8,9 @@ function soundPitch(pitch) {
 /** @param {Chord} chord */
 function soundChord(chord) {
     for (let p of chord.pitches) {
-        soundPitch(p);
+        if (p.isSounding) {
+            soundPitch(p);
+        }
     }
 }
 

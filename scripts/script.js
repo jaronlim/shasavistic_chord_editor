@@ -388,8 +388,9 @@ class Pitch {
         this.parentChord = parentChord;
         this.isRoot = isRoot;
         this.isSelected = false;
-        this.isSounding = true;
+        this.isDashed = true;
         this.lowOpacity = false;
+        this.isSounding = true;
         this.transformedVector = transformedVector;
         this.htmlPitchElement = null;
         this.intervalBars = [];
@@ -459,6 +460,7 @@ class Pitch {
     updateSettings() {
         const centerX = this.viewportX + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
         if (mouseX < centerX) {
+            this.isDashed = !this.isDashed;
             this.isSounding = !this.isSounding;
         } else {
             this.lowOpacity = !this.lowOpacity;
@@ -477,7 +479,7 @@ class Pitch {
                 let rightHalf = addPitchLine(centerX, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
 
                 // TODO: use setting for stroke-dasharray
-                if (this.isSounding) {
+                if (this.isDashed) {
                     leftHalf.setAttribute("stroke-dasharray", "5, 5");
                 } else {
                     rightHalf.setAttribute("stroke-dasharray", "5, 5");
@@ -499,7 +501,7 @@ class Pitch {
             }
         } else {
             this.htmlPitchElement = addPitchLine(x + this.leftOffset, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
-            if (!this.isSounding) {
+            if (!this.isDashed) {
                 this.htmlPitchElement.setAttribute("stroke-dasharray", "5, 5");
             }
             if (this.lowOpacity) {

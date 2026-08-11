@@ -1,4 +1,39 @@
-const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+const volumeButton = document.getElementById("volume-button");
+
+const vol = new Tone.Volume(0).toDestination();
+const synth = new Tone.PolySynth(Tone.Synth).connect(vol);
+
+let volumeSetting = 2;
+
+
+function setVolume(v) {
+    vol.volume.value = v;
+}
+
+function nextVolume() {
+    switch (volumeSetting) {
+        case 2:
+            vol.volume.value = -Infinity;
+            volumeButton.firstElementChild.setAttribute("src", "images/volume-0.png");
+            volumeSetting = 0;
+            break;
+        case 1:
+            vol.volume.value = 0;
+            volumeButton.firstElementChild.setAttribute("src", "images/volume-2.png");
+            volumeSetting = 2;
+            break;
+        case 0:
+            vol.volume.value = -18;
+            volumeButton.firstElementChild.setAttribute("src", "images/volume-1.png");
+            volumeSetting = 1;
+            break;
+        default:
+            vol.volume.value = -Infinity;
+            volumeButton.firstElementChild.setAttribute("src", "images/volume-0.png");
+            volumeSetting = 0;
+            break;
+    }
+}
 
 /** @param {Pitch} pitch */
 function soundPitch(pitch) {

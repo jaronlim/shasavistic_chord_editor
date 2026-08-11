@@ -11,6 +11,7 @@ function setVolume(v) {
 }
 
 function nextVolume() {
+    volumeButton.blur();
     switch (volumeSetting) {
         case 2:
             vol.volume.value = -Infinity;

@@ -138,6 +138,7 @@ class Project {
     }
 
     updateViewport() {
+        viewport.style.backgroundColor = settings.chordsBgColor;
         let x = 0;
         for (let section of this.sections) {
             section.startX = x;
@@ -240,7 +241,7 @@ class Section {
         let x = startX + settings.leftPadding;
         for (let chord of this.chords) {
             chord.addToViewport(x);
-            x += chord.width + chordSpacing;
+            x += chord.width + settings.chordSpacing;
         }
     }
 }
@@ -333,7 +334,7 @@ class KeyArea {
         // Tonic
         const tonicY = this.getTonicY();
         if (tonicY > minY && tonicY < maxY) {
-            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, tonicY, tonicY, "white", settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${this.uid}`)));
+            this.htmlElements.push(keyAreasViewportGroup.appendChild(addLine(minX, maxX, tonicY, tonicY, settings.axisColors[0], settings.tonicLineOpacity, settings.tonicLineWidth, `keyArea ${this.uid}`)));
         } else {
             console.error(`The tonic can't be outside of the rendered bounds!\ntonicY=${tonicY}\nminY=${minY}\nmaxY=${maxY}`);
             return -1;
@@ -1122,6 +1123,27 @@ function menuSelect(buttonType, arg="") {
     }
 }
 
+function addInputField(type, key, defaultValue=null) {
+    let inputField = document.createElement("input");
+    inputField.setAttribute("type", type);
+    inputField.setAttribute("settings-key", key);
+
+    if (defaultValue) {
+        inputField.value = defaultValue;
+    } else {
+        inputField.value = settings[key];
+    }
+    
+    inputField.addEventListener("focusout", settingsChanged);
+    inputField.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.target.blur();
+        }
+    });
+
+    return inputField;
+}
+
 function populateSettingsElement() {
     let popover = document.getElementById("settings-popover");
     popover.innerHTML = "<div style=\"padding:8px; background-color: lightcoral\"><strong>Warning! Some settings are currently broken and could ruin your project!</strong></div>";
@@ -1129,7 +1151,8 @@ function populateSettingsElement() {
     table.setAttribute("id", "settings-table");
 
     for (let key in settings) {
-        if (!settingsInfo[key]) {
+        let setting = settingsInfo[key];
+        if (!setting) {
             console.warn(`settings-key [${key}] wasn't found in settingsInfo`);
             continue;
         }
@@ -1138,41 +1161,36 @@ function populateSettingsElement() {
         row.setAttribute("id", "settings-" + key);
         row.setAttribute("class", "settings-entry");
         
-        let inputField = document.createElement("input");
-        inputField.setAttribute("settings-key", key);
-        switch (settingsInfo[key].type) {
-            case "text":
-                inputField.setAttribute("type", "text");
-                break;
-            case "number":
-                inputField.setAttribute("type", "number");
+        let inputField;
+        
+        if (setting.type in settingsInputTypes) {
+            inputField = addInputField(settingsInputTypes[setting.type], key);
+            if (setting.type === "number") {
                 inputField.setAttribute("step", 0.01);
-                break;
-            case "bool":
-                inputField.setAttribute("type", "checkbox");
-                break;
-            case "array":
-                inputField.setAttribute("type", "hidden");
-                break;
-            case "json":
-                inputField.setAttribute("type", "hidden");
-                break;
-            default:
-                inputField.setAttribute("type", "hidden");
-                console.warn(`Found settings value of an unknown type!\nsettings[${key}] = ${settings[key]} (of type ${typeof settings[key]})`);
-        }
-        inputField.value = settings[key];
-        inputField.setAttribute("type", settingsInputTypes[settingsInfo[key].type])
-        row.innerHTML = `<td class="settings-key-column">${settingsInfo[key].name}</td><td class="settings-input-column"></td>`;
-        row.getElementsByClassName("settings-input-column")[0].appendChild(inputField);
-        table.appendChild(row)
-
-        inputField.addEventListener("focusout", settingsChanged);
-        inputField.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
-                event.target.blur();
             }
-        })
+        } else if (setting.type === "array") {
+            let subType = settingsInputTypes[setting["sub-type"]];
+            inputField = document.createElement("div");
+            if (subType) {
+                for (let i = 0; i < setting.len; i++) {
+                    let subInput = addInputField(subType, key, setting.default[i]);
+                    subInput.setAttribute("arr-index", i);
+                    inputField.appendChild(subInput);
+                }
+            } else {
+                console.warn(`Settings array for [${key}] has non-primative sub-type: ${setting["sub-type"]}`);
+            }
+        } else if (setting.type === "json") {
+
+        } else {
+            console.warn(`Found settings value of an unknown type!\nsettings[${key}] = ${settings[key]} (of type ${typeof settings[key]})`);
+        }
+
+        row.innerHTML = `<td class="settings-key-column">${settingsInfo[key].name}</td><td class="settings-input-column"></td>`;
+        if (inputField) {
+            row.getElementsByClassName("settings-input-column")[0].appendChild(inputField);
+        }
+        table.appendChild(row)
     }
     popover.appendChild(table);
 }
@@ -1195,6 +1213,13 @@ function settingsChanged(event) {
             break;
         case "text":
             settings[key] = rawValue;
+            break;
+        case "bool":
+            settings[key] = rawValue;
+            break;
+        case "array":
+            let index = event.target.getAttribute("arr-index");
+            settings[key].splice(index, 1, rawValue);
             break;
     }
     project.updateViewport();

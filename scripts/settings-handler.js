@@ -20,6 +20,7 @@ let settingsInfo = {
         "desc": "The basis vectors of the dimensional axes",
         "type": "array",
         "sub-type": "array",
+        "len": 8,
         "default": [
             [0],
             [1],
@@ -31,11 +32,18 @@ let settingsInfo = {
             [-2, 0, 0, 0, 0, 0, 1],
         ]
     },
+    "chordsBgColor": {
+        "name": "Viewport Background",
+        "desc": "The background color of the chord diagram viewport",
+        "type": "color",
+        "default": "#676681" 
+    },
     "axisColors": {
         "name": "Axis Colors",
         "desc": "The colors to use for each axis",
         "type": "array",
         "sub-type": "color",
+        "len": 8,
         "default": [
             "#ffffff",
             "#aaaaaa",

@@ -392,6 +392,7 @@ class Pitch {
         this.lowOpacity = false;
         this.isSounding = true;
         this.transformedVector = transformedVector;
+        this.octaveDisplacement = 0;
         this.htmlPitchElement = null;
         this.intervalBars = [];
         this.leftOffset = 0;
@@ -441,7 +442,7 @@ class Pitch {
     }
 
     getFrequency() {
-        return this.parentChord.relativeFreq * this.getRatio();
+        return this.parentChord.relativeFreq * this.getRatio() * (2 ** this.octaveDisplacement);
     }
 
     getRelativeY(referenceFreq) {

@@ -1129,13 +1129,18 @@ function populateSettingsElement() {
     table.setAttribute("id", "settings-table");
 
     for (let key in settings) {
+        if (!settingsInfo[key]) {
+            console.warn(`settings-key [${key}] wasn't found in settingsInfo`);
+            continue;
+        }
+
         let row = document.createElement("tr");
         row.setAttribute("id", "settings-" + key);
         row.setAttribute("class", "settings-entry");
         
         let inputField = document.createElement("input");
         inputField.setAttribute("settings-key", key);
-        switch (settingsMetaInfo[key].type) {
+        switch (settingsInfo[key].type) {
             case "text":
                 inputField.setAttribute("type", "text");
                 break;
@@ -1154,11 +1159,11 @@ function populateSettingsElement() {
                 break;
             default:
                 inputField.setAttribute("type", "hidden");
-                console.warn(`Found settings value of an unknown type!\n${settings[key]} of type ${typeof settings[key]}`);
+                console.warn(`Found settings value of an unknown type!\nsettings[${key}] = ${settings[key]} (of type ${typeof settings[key]})`);
         }
         inputField.value = settings[key];
-        inputField.setAttribute("type", settingsInputTypes[settingsMetaInfo[key].type])
-        row.innerHTML = `<td class="settings-key-column">${settingsMetaInfo[key].name}</td><td class="settings-input-column"></td>`;
+        inputField.setAttribute("type", settingsInputTypes[settingsInfo[key].type])
+        row.innerHTML = `<td class="settings-key-column">${settingsInfo[key].name}</td><td class="settings-input-column"></td>`;
         row.getElementsByClassName("settings-input-column")[0].appendChild(inputField);
         table.appendChild(row)
 
@@ -1175,11 +1180,11 @@ function populateSettingsElement() {
 function settingsChanged(event) {
     let key = event.target.getAttribute("settings-key")
     let rawValue = event.target.value;
-    let meta = settingsMetaInfo[key];
-    if (!meta) { console.error("Failed to update settings."); return; }
-    switch (meta.type) {
+    let setting = settingsInfo[key];
+    if (!setting) { console.error("Failed to update settings."); return; }
+    switch (setting.type) {
         case "number":
-            if (rawValue < meta.min || rawValue > meta.max) {
+            if (rawValue < setting.min || rawValue > setting.max) {
                 // TODO: show error tooltip
                 break;
             }

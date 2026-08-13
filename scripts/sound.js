@@ -42,7 +42,11 @@ function soundPitch(pitch) {
 }
 
 /** @param {Chord} chord */
-function soundChord(chord) {
+function soundChord(chord, stopCurrent=true) {
+    if (stopCurrent) {
+        synth.releaseAll();
+    }
+
     for (let p of chord.pitches) {
         if (p.isSounding) {
             soundPitch(p);

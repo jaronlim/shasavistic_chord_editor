@@ -1602,7 +1602,7 @@ function mouseClickInput(x, y) {
         return;
     }
     section.chords[chordIndex].inputIntervalRawY(y, selectedDimension, selectedDirection);
-    soundChord(section.chords[chordIndex]);
+    if (section.chords[chordIndex]) soundChord(section.chords[chordIndex]);
     if (newChord) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
     } else {

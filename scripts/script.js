@@ -711,16 +711,23 @@ class Chord {
         // Check that parent exists
         let parent = this.getPitch(fromVector);
         if (!parent) {
-            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`); return;
+            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`);
+            return;
         }
 
         // Check that new pitch doesn't already exist
-        let newPitchVector = [...parent.transformedVector];
-        while (newPitchVector.length <= Math.abs(dim)) {
-            newPitchVector.push(0);
+        let existingPitch;
+        let newPitchVector;
+        if (dim === 0) {
+            existingPitch = parent;
+        } else {
+            newPitchVector = [...parent.transformedVector];
+            while (newPitchVector.length <= Math.abs(dim)) {
+                newPitchVector.push(0);
+            }
+            newPitchVector[Math.abs(dim)] += dir;
+            existingPitch = this.getPitch(newPitchVector)
         }
-        newPitchVector[Math.abs(dim)] += dir;
-        let existingPitch = this.getPitch(newPitchVector)
         if (existingPitch) {
             // In the case of 0D, remove pitch and all associated interval bars
             if (dim === 0) {

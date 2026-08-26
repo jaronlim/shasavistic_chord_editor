@@ -1599,6 +1599,7 @@ function mouseClickInput(x, y) {
     }
     if (selectedDimension === 0 && newChord) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
+        soundChord(section.chords[chordIndex]);
         return;
     }
     section.chords[chordIndex].inputIntervalRawY(y, selectedDimension, selectedDirection);

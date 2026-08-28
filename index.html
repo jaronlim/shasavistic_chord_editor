@@ -17,40 +17,40 @@
                 <img src="images/volume-2.png" alt="volume button" style="height:auto; width:30px;">
             </button>
 
-            <button type="button" onclick="menuSelect('dim', -1)" class="menu-button axis-button" id="button--1d">
+            <button type="button" dim="-1" class="menu-button axis-button" id="button--1d">
                 <img src="images/pitch-edit-symbol.png" alt="pitch selection button" style="height:auto; width:30px;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 0)" class="menu-button axis-button" id="button-0d">
+            <button type="button" dim="0" class="menu-button axis-button" id="button-0d">
                 <img src="images/0d-pitch-symbol.png" alt="pitch selection button" style="height:auto; width:30px;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 1)" class="menu-button axis-button" id="button-1d">
+            <button type="button" dim="1" class="menu-button axis-button" id="button-1d">
                 <img src="images/1d-symbol.png" alt="1D axis button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 2)" class="menu-button axis-button selected-button" id="button-2d">
+            <button type="button" dim="2" class="menu-button axis-button selected-button" id="button-2d">
                 <img src="images/2d-symbol.png" alt="2D axis button" style="width:30px; height:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 3)" class="menu-button axis-button" id="button-3d">
+            <button type="button" dim="3" class="menu-button axis-button" id="button-3d">
                 <img src="images/3d-symbol.png" alt="3D axis button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 4)" class="menu-button axis-button" id="button-4d">
+            <button type="button" dim="4" class="menu-button axis-button" id="button-4d">
                 <img src="images/4d-symbol.png" alt="4D axis button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 5)" class="menu-button axis-button" id="button-5d">
+            <button type="button" dim="5" class="menu-button axis-button" id="button-5d">
                 <img src="images/5d-symbol.png" alt="5D axis button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 6)" class="menu-button axis-button" id="button-6d">
+            <button type="button" dim="6" class="menu-button axis-button" id="button-6d">
                 <img src="images/6d-symbol.png" alt="6D axis button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dim', 7)" class="menu-button axis-button" id="button-7d">
+            <button type="button" dim="7" class="menu-button axis-button" id="button-7d">
                 <img src="images/7d-symbol.png" alt="7D axis button" style="height:30px; width:auto;">
             </button>
 
             <hr style="margin-right:2px">
 
-            <button type="button" onclick="menuSelect('dir', 1)" class="menu-button direction-button selected-button" id="button-ascent">
+            <button type="button" class="menu-button direction-button selected-button" id="button-ascent">
                 <img src="images/ascent-symbol.png" alt="ascent button" style="height:30px; width:auto;">
             </button>
-            <button type="button" onclick="menuSelect('dir', -1)" class="menu-button direction-button" id="button-descent">
+            <button type="button" class="menu-button direction-button" id="button-descent">
                 <img src="images/descent-symbol.png" alt="descent button" style="height:30px; width:auto;">
             </button>
         </div>
@@ -69,12 +69,10 @@
         <div popover id="add-section-popover">
             Primary Axis: <input type="number" min="1" max="7" id="primary-axis-input" value="2">
             Secondary Axis: <input type="number" min="1" max="7" id="secondary-axis-input" value="4">
-            <button onclick="addSection()" popovertarget="add-section-popover">Add</button>
+            <button popovertarget="add-section-popover" id="add-section-button">Add</button>
         </div>
     </div>
-    <script src="https://unpkg.com/tone"></script> <!-- tone.js -->
-    <script src="scripts/script.js"></script>
-    <script src="scripts/settings-handler.js"></script>
-    <script src="scripts/sound.js"></script>
+    <script type="module" src="https://unpkg.com/tone"></script> <!-- tone.js -->
+    <script type="module" src="scripts/script.js"></script>
 </body>
 </html>

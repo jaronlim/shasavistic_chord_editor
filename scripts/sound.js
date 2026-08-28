@@ -3,14 +3,14 @@ const volumeButton = document.getElementById("volume-button");
 const vol = new Tone.Volume(0).toDestination();
 const synth = new Tone.PolySynth(Tone.Synth).connect(vol);
 
-let volumeSetting = 2;
+export let volumeSetting = 2;
 
 
-function setVolume(v) {
+export function setVolume(v) {
     vol.volume.value = v;
 }
 
-function nextVolume() {
+export function nextVolume() {
     volumeButton.blur();
     switch (volumeSetting) {
         case 2:
@@ -37,12 +37,12 @@ function nextVolume() {
 }
 
 /** @param {Pitch} pitch */
-function soundPitch(pitch) {
+export function soundPitch(pitch) {
     makeSound(pitch.getFrequency());
 }
 
 /** @param {Chord} chord */
-function soundChord(chord, stopCurrent=true) {
+export function soundChord(chord, stopCurrent=true) {
     if (stopCurrent) {
         synth.releaseAll();
     }
@@ -67,4 +67,3 @@ document.addEventListener("keypress", (e) => {
         soundChord(chord);
     }
 });
-

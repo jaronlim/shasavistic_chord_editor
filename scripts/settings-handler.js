@@ -1,11 +1,11 @@
-let settingsInputTypes = {
+export let settingsInputTypes = {
     "number": "number",
     "text": "text",
     "bool": "checkbox",
     "color": "color",
 }
 
-let settingsInfo = {
+export let settingsInfo = {
 
     "octaveScale": {
         "name": "Octave Scale",
@@ -177,7 +177,7 @@ let settingsInfo = {
         "type": "number",
         "min": 0,
         "max": 5000,
-        "default": viewportContainer.clientWidth - 170
+        "default": 200
     },
     "autoScrollToNewChord": {
         "name": "Auto Scroll to New Chord",

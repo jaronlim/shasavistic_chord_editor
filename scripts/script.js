@@ -1,3 +1,6 @@
+import { settingsInputTypes, settingsInfo } from "./settings-handler.js";
+import { soundChord } from "./sound.js";
+
 const viewport = document.getElementById("viewport");
 const viewportContainer = document.getElementById("viewport-container");
 
@@ -1380,7 +1383,7 @@ function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classe
     if (descending) {
         startY += height;
     }
-    switch (dim) {
+    switch (Number(dim)) {
         case 1:
             let bar = document.createElementNS("http://www.w3.org/2000/svg", "use");
             bar.setAttribute("href", "#1d-bar-ascent-symbol");
@@ -1390,7 +1393,6 @@ function addIntervalBar(dim, x1, x2, startY, opacity=1, descending=false, classe
             bar.setAttribute("opacity", opacity);
             bar.setAttribute("class", classes);
             return viewport.appendChild(bar);
-            break;
         case 2:
             return addLine(x1, x1, startY + halfPitchWidth, startY-height - halfPitchWidth, settings.axisColors[dim], opacity, defaultWidth, classes);
         case 3:
@@ -1430,7 +1432,6 @@ function setPreviewPitch(x, y) {
         if (previewIntervalBarElement) {previewIntervalBarElement.remove();}
         previewBasePitchElement.remove();
         previewPitch = null;
-        previewIntervalBar = null;
     }
     let chordIndex = section.findNearestChordIndex(x);
     
@@ -1719,6 +1720,26 @@ document.addEventListener("keypress", (event) => {
 window.addEventListener("resize", (event) => {
     project.fitInWindow();
 });
+
+
+document.getElementById("add-section-button").addEventListener("click", () => {
+    addSection();
+})
+
+Array.prototype.forEach.call(document.getElementsByClassName("axis-button"), (element) => {
+    element.addEventListener("click", () => {
+        menuSelect("dim", element.getAttribute("dim"));
+    });
+});
+
+document.getElementById("button-ascent").addEventListener("click", () => {
+    menuSelect("dir", 1);
+});
+
+document.getElementById("button-descent").addEventListener("click", () => {
+    menuSelect("dir", -1);
+});
+
 
 let project = new Project();
 function initialize() {

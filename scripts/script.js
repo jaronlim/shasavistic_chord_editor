@@ -6,8 +6,10 @@ const keyAreasViewportGroup = document.getElementById("keyAreas");
 const PRIMES = [2, 3, 5, 7, 11, 13, 17];
 const C_0 = 16.3516 //hz
 
-let selectedDimension = 2; // 0-7 for dimensions; -1 for pitch editor; -2 for chord preset
-let selectedDirection = 1;
+let menu = {
+    dim: 2,
+    dir: 1
+}
 
 /** @type {Pitch|null} */
 let selectedPitch = null; // Hovered over / highlighted pitch
@@ -475,7 +477,7 @@ class Pitch {
         this.viewportX = x;
         let thisY = this.getRelativeY(referenceFreq);
         if (this.isSelected) {
-            if (selectedDimension === -1) {
+            if (menu.dim === -1) {
                 let centerX = x + (settings.chordWidth + this.rightOffset + this.leftOffset) / 2;
                 let leftHalf = addPitchLine(x + this.leftOffset, centerX, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
                 let rightHalf = addPitchLine(centerX, x + settings.chordWidth + this.rightOffset, thisY, settings.pitchLineColor, 1, settings.pitchLineWidth, "pitchLine chord " + this.parentChord.uid);
@@ -1108,14 +1110,14 @@ function newUniqueId() {
 function menuSelect(buttonType, arg="") {
     switch (buttonType) {
         case "dim":
-            selectedDimension = arg;
+            menu.dim = arg;
             document.querySelectorAll(".axis-button").forEach((el) => {
                 el.classList.remove("selected-button");
             });
             document.querySelector(`#button-${arg}d`).classList.add("selected-button");
             break;
         case "dir":
-            selectedDirection = arg;
+            menu.dir = arg;
             document.querySelectorAll(".direction-button").forEach((el) => {
                 el.classList.remove("selected-button");
             });
@@ -1434,10 +1436,10 @@ function setPreviewPitch(x, y) {
     
     if (chordIndex === section.chords.length) {
         let previewPitchVector = [0];
-        while (previewPitchVector.length <= selectedDimension) {
+        while (previewPitchVector.length <= menu.dim) {
             previewPitchVector.push(0);
         }
-        previewPitchVector[selectedDimension] += selectedDirection;
+        previewPitchVector[menu.dim] += menu.dir;
         previewPitch = new Pitch(null, previewPitchVector);
         
         let nearestLineVector = keyArea.getNearestLineVector(y);
@@ -1450,7 +1452,7 @@ function setPreviewPitch(x, y) {
         previewBasePitchElement = addPitchLine(thisX, thisX + settings.chordWidth, baseY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch")
 
         // Add interval bar
-        previewIntervalBarElement = addIntervalBar(selectedDimension, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(menu.dim, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, menu.dir === 1, "intervalBar preview-pitch");
     } else {
         // Get hovered pitch
         let chord = section.chords[chordIndex];
@@ -1459,21 +1461,21 @@ function setPreviewPitch(x, y) {
         // Check for existing bar
         let barExists = null;
         for (let existingBar of nearestPitch.intervalBars) {
-            if (existingBar.dim === selectedDimension && (selectedDirection === 1 ? existingBar.pitchBelow : existingBar.pitchAbove) === nearestPitch) {
+            if (existingBar.dim === menu.dim && (menu.dir === 1 ? existingBar.pitchBelow : existingBar.pitchAbove) === nearestPitch) {
                 barExists = existingBar;
                 break;
             }
         }
 
         let previewPitchVector = [...nearestPitch.transformedVector];
-        while (previewPitchVector.length <= selectedDimension) {
+        while (previewPitchVector.length <= menu.dim) {
             previewPitchVector.push(0);
         }
-        previewPitchVector[selectedDimension] += selectedDirection;
+        previewPitchVector[menu.dim] += menu.dir;
         previewPitch = new Pitch(null, previewPitchVector);
         let referenceFreq = chord.relativeFreq;
 
-        if (selectedDimension === -1) return;
+        if (menu.dim === -1) return;
 
         // Add pitch line
         let thisY = Math.log2(referenceFreq * previewPitch.getRatio() / C_0) * settings.octaveScale * -1;
@@ -1481,20 +1483,20 @@ function setPreviewPitch(x, y) {
         previewPitchElement = addPitchLine(thisX, thisX + settings.chordWidth, thisY, settings.pitchLineColor, settings.previewPitchOpacity, settings.pitchLineWidth, "pitchLine chord preview-pitch");
 
         // Add interval bar
-        previewIntervalBarElement = addIntervalBar(selectedDimension, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, selectedDirection === 1, "intervalBar preview-pitch");
+        previewIntervalBarElement = addIntervalBar(menu.dim, thisX, thisX + settings.chordWidth, thisY, settings.previewPitchOpacity, menu.dir === 1, "intervalBar preview-pitch");
         if (barExists) {
-            if (selectedDimension === 2 || selectedDimension === 3) {
+            if (menu.dim === 2 || menu.dim === 3) {
                 previewIntervalBarElement.setAttribute("stroke", settings.chordsBgColor);
 
-                if (selectedDimension === 2) {
+                if (menu.dim === 2) {
                     previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + barExists.leftOffset);
                     previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + barExists.leftOffset);
                 }
-                if (selectedDimension === 3) {
+                if (menu.dim === 3) {
                     previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + barExists.rightOffset);
                     previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + barExists.rightOffset);
                 }
-            } else if (selectedDimension >= 4 && selectedDimension <= 7) {
+            } else if (menu.dim >= 4 && menu.dim <= 7) {
                 previewIntervalBarElement.setAttribute("fill", settings.chordsBgColor);
 
                 let points = previewIntervalBarElement.getAttribute("points").split(" ");
@@ -1502,13 +1504,13 @@ function setPreviewPitch(x, y) {
                     points[i] = points[i].split(",").map(Number);
                     points[i][0] = points[i][0];
                 }
-                if (selectedDimension === 4) {
+                if (menu.dim === 4) {
                     points[0][0] += barExists.leftOffset;
                     points[1][0] += barExists.leftOffset;
                     points[2][0] += barExists.rightOffset;
                     points[3][0] += barExists.rightOffset;
                 }
-                if (selectedDimension === 5) {
+                if (menu.dim === 5) {
                     points[0][0] += barExists.rightOffset;
                     points[1][0] += barExists.rightOffset;
                     points[2][0] += barExists.leftOffset;
@@ -1519,25 +1521,25 @@ function setPreviewPitch(x, y) {
             previewPitchElement.remove();
 
         } else {
-            if (selectedDimension === 2 || selectedDimension === 3) {
-                if (selectedDimension === 2) {
+            if (menu.dim === 2 || menu.dim === 3) {
+                if (menu.dim === 2) {
                     previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + nearestPitch.leftOffset);
                     previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + nearestPitch.leftOffset);
                     previewPitchElement.setAttribute("x1", Number(previewPitchElement.getAttribute("x1")) + nearestPitch.leftOffset);
                 }
-                if (selectedDimension === 3) {
+                if (menu.dim === 3) {
                     previewIntervalBarElement.setAttribute("x1", Number(previewIntervalBarElement.getAttribute("x1")) + nearestPitch.rightOffset);
                     previewIntervalBarElement.setAttribute("x2", Number(previewIntervalBarElement.getAttribute("x2")) + nearestPitch.rightOffset);
                     previewPitchElement.setAttribute("x2", Number(previewPitchElement.getAttribute("x2")) + nearestPitch.rightOffset);
                 }
-            } else if (selectedDimension === 4 || selectedDimension === 5) {
+            } else if (menu.dim === 4 || menu.dim === 5) {
                 let points = previewIntervalBarElement.getAttribute("points").split(" ");
                 for (let i = 0; i < points.length; i++) {
                     points[i] = points[i].split(",").map(Number);
                     points[i][0] = points[i][0];
                 }
-                if (selectedDimension === 4) {
-                    if (selectedDirection === 1) {
+                if (menu.dim === 4) {
+                    if (menu.dir === 1) {
                         points[0][0] += nearestPitch.leftOffset;
                         points[1][0] += nearestPitch.leftOffset;
                     } else {
@@ -1545,8 +1547,8 @@ function setPreviewPitch(x, y) {
                         points[3][0] += nearestPitch.rightOffset;
                     }
                 }
-                if (selectedDimension === 5) {
-                    if (selectedDirection === 1) {
+                if (menu.dim === 5) {
+                    if (menu.dir === 1) {
                         points[0][0] += nearestPitch.rightOffset;
                         points[1][0] += nearestPitch.rightOffset;
                     } else {
@@ -1604,12 +1606,12 @@ function handleMouseClick(x, y) {
     if (chordIndex === section.chords.length) {
         newChord = section.addChord(261.63 * intervalToRatio(keyArea.getNearestLineVector(y)));
     }
-    if (selectedDimension === 0 && newChord) {
+    if (menu.dim === 0 && newChord) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
         soundChord(section.chords[chordIndex]);
         return;
     }
-    section.chords[chordIndex].inputIntervalRawY(y, selectedDimension, selectedDirection);
+    section.chords[chordIndex].inputIntervalRawY(y, menu.dim, menu.dir);
     if (section.chords[chordIndex]) soundChord(section.chords[chordIndex]);
     if (newChord) {
         newChord.addToViewport(chordIndex * (settings.chordWidth + settings.chordSpacing) + viewportPaddingX);
@@ -1620,7 +1622,7 @@ function handleMouseClick(x, y) {
         }
     }
     let deltaViewportY = oldViewportY - saveOldViewportY;
-    if (selectedDimension !== -1 || newChord) {
+    if (menu.dim !== -1 || newChord) {
         setPreviewPitch(x, y - deltaViewportY);
         setSelectedPitch(x, y - deltaViewportY);
     }
@@ -1649,7 +1651,7 @@ viewport.addEventListener("mousemove", (event) => {
     }
     if (!cancelMouseInput && !mouseIsDown) {
         setSelectedPitch(mouseX - horizPadding, mouseY - vertPadding);
-        if (selectedDimension === -1) {
+        if (menu.dim === -1) {
             
         } else {
             setPreviewPitch(mouseX - horizPadding, mouseY - vertPadding);
@@ -1706,7 +1708,7 @@ document.addEventListener("keypress", (event) => {
 
     if (event.key === settings.hotkeys.selectAscent) { menuSelect("dir", 1); needsPreviewPitchRedraw = true; }
     if (event.key === settings.hotkeys.selectDescent) { menuSelect("dir", -1); needsPreviewPitchRedraw = true; }
-    if (event.key === settings.hotkeys.switchDirection) { menuSelect("dir", selectedDirection * -1); needsPreviewPitchRedraw = true; }
+    if (event.key === settings.hotkeys.switchDirection) { menuSelect("dir", menu.dir * -1); needsPreviewPitchRedraw = true; }
 
     if (needsPreviewPitchRedraw) {
         setSelectedPitch(mouseX, mouseY);

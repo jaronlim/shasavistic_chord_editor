@@ -1257,7 +1257,7 @@ function intervalToRatio(arr) {
     return product;
 }
 
-let oldViewportY; // stores previous viewport Y position to help calculate new y coordinates on refit (also used in mouseClickInput)
+let oldViewportY; // stores previous viewport Y position to help calculate new y coordinates on refit (also used in handleMouseClick)
 const vertPadding = 5;
 const horizPadding = 0;
 function refitSvgContent() {
@@ -1594,7 +1594,7 @@ function setSelectedPitch(x, y) {
     }
 }
 
-function mouseClickInput(x, y) {
+function handleMouseClick(x, y) {
     let saveOldViewportY = oldViewportY;
     let section = project.getSectionAt(x);
     let keyArea = section.keyArea;
@@ -1691,7 +1691,7 @@ viewport.addEventListener("mouseup", (event) => {
     }
     cancelMouseInput = false;
     if (event.button == 0) {
-        mouseClickInput(mouseDownX - horizPadding, mouseDownY - vertPadding);
+        handleMouseClick(mouseDownX - horizPadding, mouseDownY - vertPadding);
     }
 });
 

@@ -1684,6 +1684,7 @@ let project = new Project();
 function initialize() {
     viewport.style.backgroundColor = settings.chordsBgColor;
     document.getElementById("add-section-popover").showPopover();
+    settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
 }
 
 initialize();

@@ -1,5 +1,5 @@
 import { settingsInputTypes, settingsInfo, settings } from "./settings-handler.js";
-import { soundChord } from "./sound.js";
+import { nextVolume, soundChord } from "./sound.js";
 
 const viewport = document.getElementById("viewport");
 const viewportContainer = document.getElementById("viewport-container");
@@ -1060,9 +1060,6 @@ function menuSelect(buttonType, arg="") {
             });
             document.querySelector(`#button-${arg === 1? "ascent" : "descent"}`).classList.add("selected-button");
             break;
-        case "settings":
-            populateSettingsElement();
-            break;
         default:
             console.warn("Failed to update a menu button!");
             break;
@@ -1672,6 +1669,14 @@ document.getElementById("button-ascent").addEventListener("click", () => {
 
 document.getElementById("button-descent").addEventListener("click", () => {
     menuSelect("dir", -1);
+});
+
+document.getElementById("settings-button").addEventListener("click", () => {
+    populateSettingsElement();
+});
+
+document.getElementById("volume-button").addEventListener("click", () => {
+    nextVolume();
 });
 
 

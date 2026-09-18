@@ -1,69 +1,29 @@
-const volumeButton = document.getElementById("volume-button");
+import { Chord } from "./chord";
+import { monzoToFreq } from "./utils";
 
 const vol = new Tone.Volume(0).toDestination();
 const synth = new Tone.PolySynth(Tone.Synth).connect(vol);
-
-export let volumeSetting = 2;
-
 
 export function setVolume(v) {
     vol.volume.value = v;
 }
 
-export function nextVolume() {
-    volumeButton.blur();
-    switch (volumeSetting) {
-        case 2:
-            vol.volume.value = -Infinity;
-            volumeButton.firstElementChild.setAttribute("src", "images/volume-0.png");
-            volumeSetting = 0;
-            break;
-        case 1:
-            vol.volume.value = 0;
-            volumeButton.firstElementChild.setAttribute("src", "images/volume-2.png");
-            volumeSetting = 2;
-            break;
-        case 0:
-            vol.volume.value = -18;
-            volumeButton.firstElementChild.setAttribute("src", "images/volume-1.png");
-            volumeSetting = 1;
-            break;
-        default:
-            vol.volume.value = -Infinity;
-            volumeButton.firstElementChild.setAttribute("src", "images/volume-0.png");
-            volumeSetting = 0;
-            break;
-    }
-}
-
-/** @param {Pitch} pitch */
-export function soundPitch(pitch) {
-    makeSound(pitch.getFrequency());
-}
-
-/** @param {Chord} chord */
+/**
+ * @param {Chord} chord 
+ * @param {boolean} stopCurrent 
+ */
 export function soundChord(chord, stopCurrent=true) {
     if (stopCurrent) {
         synth.releaseAll();
     }
 
-    for (let p of chord.pitches) {
-        if (p.isSounding) {
-            soundPitch(p);
+    for (let pitch of chord.pitches) {
+        if (pitch.isSounding) {
+            makeSound(pitch.getFrequency())
         }
     }
 }
 
-function makeSound(freq, wave="saw", a=0.1, d=4, s=0, r=0) {
+function makeSound(freq) {
     synth.triggerAttackRelease(freq, "2n");
 }
-
-document.addEventListener("keypress", (e) => {
-    if (e.key === " ") {
-        e.preventDefault();
-        let section = project.getSectionAt(mouseX);
-        let keyArea = section.keyArea;
-        let chord = section.chords[section.findNearestChordIndex(mouseX)];
-        soundChord(chord);
-    }
-});

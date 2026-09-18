@@ -11,7 +11,7 @@ Intervals will be added to the closest background ruler line (for a new chord) o
 Pitch lines can be dashed and/or low opacity. To change the appearance of a pitch line, click the dashed line menu button. The left half of a pitch can be clicked to toggle dashed and the right half can be clicked to toggle low opacity (each half shows what the pitch would look like if clicked).
 
 There are a number of hotkeys for menu selection:
-- \[~] - edit pitches (dash and opacity)
+- \[`] - edit pitches (dash and opacity)
 - \[0] - add/remove standalone pitch
 - \[1] - 1D (octave) input
 - \[2] - 2D (perfect fifth) input

@@ -1,5 +1,5 @@
 import { settings } from './settings.js';
-import { monzoToRatio, MAX_DIMENSION, monzoToFreq, newUID, addArrays, scaleMonzo, addMonzos, monzosEqual } from './utils.js';
+import { monzoToRatio, MAX_DIMENSION, monzoToFreq, newUID, addArrays, scaleMonzo, addMonzos, monzosEqual, addDimToMonzo } from './utils.js';
 
 /** @type {Project} */
 export let activeProject;
@@ -157,14 +157,17 @@ export class Chord {
      * @param {number} referenceFreq 
      * @param {Array<number>} rootMonzo 
      */
-    constructor(rootMonzo=[0]) {
-        this.rootMonzo = [...rootMonzo];
-        this.pitches = [new Pitch([...rootMonzo])];
+    constructor(rootMonzo=null) {
+        this.rootMonzo = rootMonzo ? [...rootMonzo] : null;
+        this.pitches = rootMonzo ? [new Pitch([...rootMonzo])] : [];
         /** @type {Array<IntervalBar>} */
         this.bars = [];
         this.uid = newUID();
     }
 
+    /**
+     * Search through all chords in sections within activeProject to find this chord; return the parents or null if none
+     */
     getParents() {
         for (let section of activeProject.sections) {
             for (let chord of section.chords) {
@@ -179,104 +182,206 @@ export class Chord {
         return null;
     }
 
+    /**
+     * Get the Pitch of this chord associated with the given monzo
+     * @param {Array<number>} monzo
+     * @returns The Pitch object within this chord corresponding to the given monzo, or null if none
+     */
     getPitchFromMonzo(monzo) {
-        for (let p of this.pitches) {
-            if (monzosEqual(p.monzo, monzo)) return p;
+        for (let pitch of this.pitches) {
+            if (monzosEqual(pitch.monzo, monzo)) return pitch;
         }
         return null;
     }
 
+    /**
+     * Get the IntervalBar of this chord with the given monzo endpoints.
+     * @param {Array<number>} monzo1
+     * @param {Array<number>} monzo2
+     * @returns The IntervalBar object with the given monzo endpoints
+     */
+    getBarFromMonzos(monzo1, monzo2) {
+        for (let bar of this.bars) {
+            if (bar.monzoOnEndpoint(monzo1) && bar.monzoOnEndpoint(monzo2)) {
+                return bar;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the highest Pitch in the Chord by ratio, ignoring octave transposition
+     * @returns The highest Pitch in the Chord
+     */
     getMaxPitch() {
         if (this.pitches.length === 0) return null;
 
         let maxPitch = this.pitches[0];
         for (let pitch of this.pitches) {
-            if (pitch.getRatio() > maxPitch.getRatio()) {
+            if (pitch.previewType === 0 && pitch.getRatio() > maxPitch.getRatio()) {
                 maxPitch = pitch;
             }
         }
         return maxPitch;
     }
 
+    /**
+     * Get the lowest Pitch in the Chord by ratio, ignoring octave transposition
+     * @returns The lowest Pitch in the Chord
+     */
     getMinPitch() {
         if (this.pitches.length === 0) return null;
 
         let minPitch = this.pitches[0];
         for (let pitch of this.pitches) {
-            if (pitch.getRatio() < minPitch.getRatio()) {
+            if (pitch.previewType === 0 && pitch.getRatio() < minPitch.getRatio()) {
+                console.log(pitch);
                 minPitch = pitch;
             }
         }
         return minPitch;
     }
 
+    /**
+     * Add the given interval to the chord starting at the pitch at fromMonzo
+     * @param {Array<number>} fromMonzo
+     * @param {number} dim 
+     * @param {boolean} isAscending 
+     */
     inputInterval(fromMonzo, dim, isAscending) {
         console.assert(dim >= 0 && dim <= MAX_DIMENSION, `Dimension (${dim}) out of bounds.`);
 
         // Check that parent exists
-        let parent = this.getPitchFromMonzo(fromMonzo);
+        const parent = this.getPitchFromMonzo(fromMonzo);
         if (!parent) {
-            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromVector}]`);
+            console.warn(`Tried to add a pitch to a parent that didn't exist!\nAttempted parent: [${fromMonzo}]`);
             return;
         }
 
         // If selected dimension is 0 delete the pitch and return
         if (dim === 0) {
             this.removePitch(parent);
+            this.deleteSelfIfEmpty();
             return;
         }
 
-        // Check if the destination pitch exists
-        let newPitchMonzo = addMonzos(fromMonzo, scaleMonzo(settings.axes[dim], isAscending ? 1 : -1));
-        let existingPitch = this.getPitchFromMonzo(newPitchMonzo);
+        // Input interval
+        const  newPitchMonzo = addDimToMonzo(fromMonzo, dim, isAscending);
+        const existingPitch = this.getPitchFromMonzo(newPitchMonzo);
 
         if (existingPitch) {
-            // Check if the interval bar exists
-            let existingBar = null;
-            for (let i = 0; i < this.bars.length; i++) {
-                let bar = this.bars[i];
-                if (bar.monzoOnEndpoint(existingPitch.monzo) && bar.monzoOnEndpoint(fromMonzo)) {
-                    existingBar = bar;
-                    break;
-                }
-            }
+            const existingBar = this.getBarFromMonzos(existingPitch.monzo, fromMonzo);
+
             if (existingBar) {
                 this.removeBar(existingBar);
-                if (this.pitches.length === 0 && settings.deleteEmptyChord) {
-                    this.deleteSelf();
-                }
+                this.deleteSelfIfEmpty();
             } else {
                 this.addBar(fromMonzo, dim, isAscending);
             }
             return;
         } else {
-            // Add pitch and interval bar
-            let child = new Pitch(newPitchMonzo);
-            this.pitches.push(child);
+            this.addPitch(newPitchMonzo);
             this.addBar(fromMonzo, dim, isAscending);
         }
     }
 
-    addBar(fromMonzo, dim, isAscending) {
-        let bar = new IntervalBar(fromMonzo, dim, isAscending);
-        this.bars.push(bar);
+    /**
+     * Add the proposed input to the chord as preview elements
+     * @param {Array<number>} fromMonzo
+     * @param {number} dim
+     * @param {boolean} isAscending
+     */
+    setPreviewInterval(fromMonzo, dim, isAscending) {
+        this.rejectPreviewElements();
+
+        console.assert(dim >= 0 && dim <= MAX_DIMENSION, `Dimension (${dim}) out of bounds.`);
+        
+        // Check that parent exists
+        const parent = this.getPitchFromMonzo(fromMonzo);
+        if (!parent) {
+            return;
+        }
+        
+        if (dim === 0) {
+            const connectedBars = parent.getBars({chord:this});
+            for (let bar of connectedBars) {
+                bar.previewType = -1;
+            }
+            return;
+        }
+
+        // Input interval
+        const newPitchMonzo = addDimToMonzo(fromMonzo, dim, isAscending);
+        const existingPitch = this.getPitchFromMonzo(newPitchMonzo);
+        
+        if (existingPitch) {
+            const existingBar = this.getBarFromMonzos(existingPitch.monzo, fromMonzo);
+            if (existingBar) {
+                existingBar.previewType = -1;
+            } else {
+                this.addBar(fromMonzo, dim, isAscending).previewType = 1;
+            }
+            return;
+        } else {
+            this.addPitch(newPitchMonzo).previewType = 1;
+            this.addBar(fromMonzo, dim, isAscending).previewType = 1;
+        }
     }
 
     /**
-     * Remove a pitch; remove the chord if empty according to settings.deleteEmptyChord
+     * Set the root pitch
+     * @param {Array<number>} rootMonzo
+     */
+    setRootMonzo(rootMonzo) {
+        this.rootMonzo = [...rootMonzo];
+        if (this.getPitchFromMonzo(rootMonzo) === null) {
+            this.addPitch(new Pitch(rootMonzo));
+        }
+    }
+
+    /**
+     * Create a new Pitch with the given monzo to add to the Chord
+     * @param {Array<number>} monzo
+     * @returns The created Pitch
+     */
+    addPitch(monzo) {
+        let pitch = new Pitch(monzo);
+        this.pitches.push(pitch);
+        return pitch;
+    }
+
+    /**
+     * Create an IntervalBar with the given base monzo, dimension, and direction to add to the Chord
+     * @param {Array<number>} fromMonzo
+     * @param {number} dim
+     * @param {boolean} isAscending
+     * @returns The created bar
+     */
+    addBar(fromMonzo, dim, isAscending) {
+        let bar = new IntervalBar(fromMonzo, dim, isAscending);
+        this.bars.push(bar);
+        return bar;
+    }
+
+    /**
+     * Remove a pitch and any associated bars
      * @param {Pitch} pitch
      */
     removePitch(pitch) {
+        for (let i = 0; i < this.bars.length; i++) {
+            let b = this.bars[i];
+            if (b.monzoOnEndpoint(pitch.monzo)) {
+                this.bars.splice(i, 1);
+                i--;
+            }
+        }
+
         for (let i = 0; i < this.pitches.length; i++) {
             let p = this.pitches[i];
             if (monzosEqual(p.monzo, pitch.monzo)) {
                 this.pitches.splice(i, 1);
                 return;
             }
-        }
-
-        if (this.pitches.length === 0) {
-            this.deleteSelf();
         }
     }
 
@@ -305,10 +410,56 @@ export class Chord {
             }
         }
         if (!pitchAboveHasBars) {
-            this.removePitch(this.getPitchFromMonzo(bar.getTopMonzo()));
+            const topPitch = this.getPitchFromMonzo(bar.getTopMonzo());
+            if (topPitch) this.removePitch(topPitch);
         }
         if (!pitchBelowHasBars) {
-            this.removePitch(this.getPitchFromMonzo(bar.getBottomMonzo()));
+            const bottomPitch = this.getPitchFromMonzo(bar.getBottomMonzo());
+            if (bottomPitch) this.removePitch(bottomPitch);
+        }
+    }
+
+    /**
+     * Set previewType=1 pitches to previewType=0 and delete previewType=-1 pitches
+     */
+    acceptPreviewElements() {
+        for (let pitch of [...this.pitches]) {
+            if (pitch.previewType === 0) continue;
+            if (pitch.previewType === 1) {
+                pitch.previewType = 0;
+            } else if (pitch.previewType === -1) {
+                // remove bar will remove the pitch as well
+            }
+        }
+        for (let bar of [...this.bars]) {
+            if (bar.previewType === 0) continue;
+            if (bar.previewType === 1) {
+                bar.previewType = 0;
+            } else if (bar.previewType === -1) {
+                this.removeBar(bar);
+            }
+        }
+
+        this.deleteSelfIfEmpty();
+    }
+
+    /**
+     * Set previewType=-1 pitches to previewType=0 and delete previewType=1 pitches
+     */
+    rejectPreviewElements() {
+        for (let bar of [...this.bars]) {
+            if (bar.previewType === 1) {
+                this.removeBar(bar);
+            } else if (bar.previewType === -1) {
+                bar.previewType = 0;
+            }
+        }
+        for (let pitch of [...this.pitches]) {
+            if (pitch.previewType === 1) {
+                this.removePitch(pitch);
+            } else if (pitch.previewType === -1) {
+                pitch.previewType = 0;
+            }
         }
     }
 
@@ -316,6 +467,12 @@ export class Chord {
         deletedUids.push(this.uid);
         const parentSection = knownParents.section ? knownParents.section : this.getParents().section;
         parentSection.removeChord(this);
+    }
+
+    deleteSelfIfEmpty(knownParents={section:undefined}) {
+        if (this.pitches.length === 0 && settings.deleteEmptyChord) {
+            this.deleteSelf(knownParents);
+        }
     }
 
     getWidth() {
@@ -335,6 +492,8 @@ export class Pitch {
         this.isDashed = false;
         this.isLowOpacity = false;
         this.isSounding = true;
+
+        this.previewType = 0; // 0=none; 1=preview_add; 2=preview_del
 
         this.leftOffset = 0;
         this.rightOffset = 0;
@@ -357,11 +516,23 @@ export class Pitch {
         return null;
     }
 
+    getBars(knownParents={chord:undefined}) {
+        const parentChord = knownParents.chord ? knownParents.chord : this.getParents().chord;
+        let bars = [];
+
+        for (let bar of parentChord.bars) {
+            if (bar.monzoOnEndpoint(this.monzo)) {
+                bars.push(bar);
+            }
+        }
+        return bars;
+    }
+
     getRatio() {
         return monzoToRatio(this.monzo);
     }
 
-    getFrequency(knownParents={section:null}) {
+    getFrequency(knownParents={section:undefined}) {
         const parentSection = knownParents.section ? knownParents.section : this.getParents().section;
 
         let referenceFreq = parentSection.keyArea.referenceFreq;
@@ -382,6 +553,8 @@ export class IntervalBar {
         this.isAscending = isAscending;
 
         this.isLowOpacity = false;
+
+        this.previewType = 0; // 0=none; 1=preview_add; 2=preview_del
 
         this.leftOffset = 0;
         this.rightOffset = 0;
@@ -411,6 +584,16 @@ export class IntervalBar {
         } else {
             return [...this.baseMonzo];
         }
+    }
+
+    getTopPitch(knownParents={chord:undefined}) {
+        const parentChord = knownParents.chord ? knownParents.chord : this.getParents().chord;
+        return parentChord.getPitchFromMonzo(this.getTopMonzo());
+    }
+
+    getBottomPitch(knownParents={chord:undefined}) {
+        const parentChord = knownParents.chord ? knownParents.chord : this.getParents().chord;
+        return parentChord.getPitchFromMonzo(this.getBottomMonzo());
     }
 
     getBottomMonzo() {

@@ -1,3 +1,5 @@
+import { settings } from "./settings.js";
+
 export const PRIMES = [2, 3, 5, 7, 11, 13, 17];
 
 export const C_0 = 16.3516 //hz
@@ -87,4 +89,9 @@ export function scaleMonzo(arr, s) {
  */
 export function addMonzos(a, b) {
     return addArrays(a, b);
+}
+
+export function addDimToMonzo(monzo, dim, isAscending) {
+    console.assert( dim >= 0 && dim <= 7, `Invalid dimension: ${dim}`);
+    return addMonzos(monzo, scaleMonzo(settings.axes[dim], isAscending ? 1 : -1));
 }

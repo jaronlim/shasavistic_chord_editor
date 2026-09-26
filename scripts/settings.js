@@ -35,7 +35,10 @@ export let settings = {
         switchDirection: 'q',
     },
 
-    previewPitchOpacity: 0.5,
+    // PREVIEW OPACITY
+    previewBarAddOpacity: 0.5,
+    previewBarDelOpacity: 0.5,
+    barLowOpacity: 0.5,
 
     // PITCH/INTERVAL-BAR SETTINGS
     pitchLineWidth: 2,

@@ -1,5 +1,5 @@
-import { Chord } from "./chord";
-import { monzoToFreq } from "./utils";
+import { Chord } from "./chord.js";
+import { monzoToFreq } from "./utils.js";
 
 const vol = new Tone.Volume(0).toDestination();
 const synth = new Tone.PolySynth(Tone.Synth).connect(vol);

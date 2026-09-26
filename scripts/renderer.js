@@ -1,5 +1,5 @@
 import { Project, Section, KeyArea, Chord, Pitch, IntervalBar, activeProject, deletedUids } from './chord.js';
-import { monzoToFreq, monzoToRatio } from './utils.js';
+import { addDimToMonzo, monzoToFreq, monzoToRatio } from './utils.js';
 import { settings } from './settings.js';
 
 export const viewport = document.getElementById('viewport');
@@ -63,8 +63,12 @@ export function drawKeyArea(keyArea) {
     let maxY = tonicY;
     let minY = tonicY;
     for (let chord of parentSection.chords) {
-        let chordMaxY = freqToSvgY(chord.getMinPitch().getFrequency({section:parentSection}));
-        let chordMinY = freqToSvgY(chord.getMaxPitch().getFrequency({section:parentSection}));
+        const chordMaxY = chord.pitches.length > 0
+            ? freqToSvgY(chord.getMinPitch().getFrequency({section:parentSection}))
+            : freqToSvgY(parentSection.keyArea.referenceFreq);
+        const chordMinY = chord.pitches.length > 0
+            ? freqToSvgY(chord.getMaxPitch().getFrequency({section:parentSection}))
+            : freqToSvgY(parentSection.keyArea.referenceFreq);
         maxY = Math.max(maxY, chordMaxY);
         minY = Math.min(minY, chordMinY);
     }
@@ -154,12 +158,163 @@ export function drawKeyArea(keyArea) {
 /**
  * @param {Chord} chord
  */
+export function untangleChordForRulerView(chord) {
+
+    const offsetDistance = settings.intervalBarWidth * 1.4;
+
+    let barStacksLeft = [];
+    let barStacksRight = [];
+    let otherBars = [];
+    let barsDone = [];
+
+    for (let bar of chord.bars) {
+        if (barsDone.includes(bar)) continue;
+
+        if (bar.dim !== 2 && bar.dim !== 3) {
+            otherBars.push([monzoToRatio(bar.getBottomMonzo()), monzoToRatio(bar.getTopMonzo)]);;
+            continue;
+        }
+        
+        let stack = getBarStack(chord, bar);
+        let minRatio = Infinity;
+        let maxRatio = -Infinity;
+        for (let stackedBar of stack) {
+            barsDone.push(stackedBar);
+            if (monzoToRatio(stackedBar.getTopMonzo()) > maxRatio) {
+                maxRatio = monzoToRatio(stackedBar.getTopMonzo());
+            }
+            if (monzoToRatio(stackedBar.getBottomMonzo()) < minRatio) {
+                minRatio = monzoToRatio(stackedBar.getBottomMonzo());
+            }
+        }
+        const isLeftBar = (b) => b.dim === 2;
+        const isRightBar = (b) => b.dim === 3;
+        if (isLeftBar(bar)) {
+            barStacksLeft.push({
+                min: minRatio,
+                max: maxRatio,
+                bars: stack,
+                offset: 0
+            });
+        } else if (isRightBar(bar)) {
+            barStacksRight.push({
+                min: minRatio,
+                max: maxRatio,
+                bars: stack,
+                offset: 0
+            });
+        }
+    }
+
+    // -- Untangle
+    let stablePitchesLeft = new Set();
+    let stablePitchesRight = new Set();
+    let stableStacksLeft = [];
+    let stableStacksRight = [];
+
+    // untangle left stacks (2D)
+    for (let stack of barStacksLeft) {
+        for (let stable of stableStacksLeft) {
+            if ((stack.min > stable.min && stack.min < stable.max) || (stable.min > stack.min && stable.min < stack.max)) {
+                // the stacks intersect
+                stack.offset = stable.offset + 1;
+            }
+        }
+        stableStacksLeft.push(stack);
+        for (let bar of stack.bars) {
+            bar.leftOffset = stack.offset * offsetDistance;
+            bar.getBottomPitch().leftOffset = stack.offset * offsetDistance;
+            bar.getTopPitch().leftOffset = stack.offset * offsetDistance;
+            stablePitchesLeft.add(bar.getBottomPitch());
+            stablePitchesLeft.add(bar.getTopPitch());
+        }
+    }
+
+    // untangle right stacks (3D)
+    for (let stack of barStacksRight) {
+        for (let stable of stableStacksRight) {
+            if ((stack.min > stable.min && stack.min < stable.max) || (stable.min > stack.min && stable.min < stack.max)) {
+                // the stacks intersect
+                stack.offset = stable.offset + 1;
+            }
+        }
+        stableStacksRight.push(stack);
+        for (let bar of stack.bars) {
+            bar.rightOffset = stack.offset * offsetDistance * -1;
+            bar.getBottomPitch().rightOffset = stack.offset * offsetDistance * -1;
+            bar.getTopPitch().rightOffset = stack.offset * offsetDistance * -1;
+            stablePitchesRight.add(bar.getBottomPitch());
+            stablePitchesRight.add(bar.getTopPitch());
+        }
+    }
+
+    // untangle parts of pitches not connected to bar stack
+    for (let pitch of chord.pitches) {
+        if (!stablePitchesLeft.has(pitch)) {
+            let leftOffset = 0;
+            for (let stack of barStacksLeft) {
+                if (pitch.getRatio() > stack.min && pitch.getRatio() < stack.max) {
+                    leftOffset = Math.max(leftOffset, stack.bars[0].leftOffset + offsetDistance);
+                }
+            }
+            pitch.leftOffset = leftOffset;
+        }
+        if (!stablePitchesRight.has(pitch)) {
+            let rightOffset = 0;
+            for (let stack of barStacksRight) {
+                if (pitch.getRatio() > stack.min && pitch.getRatio() < stack.max) {
+                    rightOffset = Math.min(rightOffset, stack.bars[0].rightOffset - offsetDistance);
+                }
+            }
+            pitch.rightOffset = rightOffset;
+        }
+    }
+
+    // fix bars to now-set pitches
+    for (let bar of chord.bars) {
+        const topPitch = bar.getTopPitch();
+        const bottomPitch = bar.getBottomPitch();
+        if (bar.dim === 4) {
+            bar.leftOffset = bottomPitch ? bottomPitch.leftOffset : 0;
+            bar.rightOffset = topPitch ? topPitch.rightOffset : 0;
+        }
+        if (bar.dim === 5) {
+            bar.leftOffset = topPitch ? topPitch.leftOffset : 0;
+            bar.rightOffset = bottomPitch ? bottomPitch.rightOffset : 0;
+        }
+        // TODO: handle 6D and 7D
+    }
+}
+
+/**
+ * @param {Chord} chord
+ * @param {IntervalBar} bar
+ */
+function getBarStack(chord, bar, calledFrom=null) {
+    const topPitch = chord.getPitchFromMonzo(bar.getTopMonzo());
+    const bottomPitch = chord.getPitchFromMonzo(bar.getBottomMonzo());
+    let stackedBarList = [...(topPitch ? topPitch.getBars() : []), ...(bottomPitch ? bottomPitch.getBars() : [])];
+    let stack = [bar];
+    for (let stackedBar of stackedBarList) {
+        if (stackedBar === bar) continue;
+        if (stackedBar === calledFrom) continue;
+        if (stackedBar.dim !== bar.dim) continue;
+        stack = [...stack, ...getBarStack(chord, stackedBar, bar)];
+    }
+    return stack;
+}
+
+/**
+ * @param {Chord} chord
+ */
 export function drawChord(chord, knownX=undefined) {
     removeStrayElements();
     removeClassFromViewport(chord.uid);
 
+    untangleChordForRulerView(chord);
+
     const parents = chord.getParents();
-    const parentProject = parents.project;
+    if (!parents) return;
     const parentSection = parents.section;
 
     let thisX;
@@ -188,11 +343,11 @@ export function drawChord(chord, knownX=undefined) {
         const frequency = pitch.getFrequency(parents);
         const pitchY = freqToSvgY(frequency);
 
-        addPitchLine(thisX, thisX + settings.chordWidth, pitchY, settings.pitchLineColor, 1, settings.pitchLineWidth, chord.uid);
+        drawPitch(pitch, thisX, {section:parentSection, chord:chord});
     }
 
     for (let bar of chord.bars) {
-    drawIntervalBar(bar, thisX, {}, 1, chord.uid);
+        drawIntervalBar(bar, thisX, {section:parentSection, chord:chord});
     }
 }
 
@@ -201,9 +356,30 @@ export function drawChord(chord, knownX=undefined) {
  * @param {number} x
  * @param {{section:Section}} knownParents
  */
-function drawIntervalBar(bar, x, knownParents={section:undefined}, opacity=1, classes='') {
-    const parentSection = knownParents.section ? knownParents.section : bar.getParents().section;
-    addBar(bar.dim, x, x + settings.chordWidth, freqToSvgY(monzoToFreq(bar.baseMonzo, parentSection.keyArea.referenceFreq)), bar.isAscending, opacity, classes);
+function drawIntervalBar(bar, x, knownParents={section:undefined}) {
+    const parents = (knownParents.section === undefined && knownParents.chord === undefined) ? bar.getParents() : knownParents;
+    const left = x + bar.leftOffset;
+    const right = x + settings.chordWidth + bar.rightOffset;
+    const svgY = freqToSvgY(monzoToFreq(bar.baseMonzo, parents.section.keyArea.referenceFreq));
+    let opacity = 1;
+    if (bar.previewType === 1) opacity *= settings.previewBarAddOpacity;
+    if (bar.previewType === -1) opacity *= settings.previewBarDelOpacity;
+    if (bar.isLowOpacity) opacity *= settings.barLowOpacity;
+    addBar(bar.dim, left, right, svgY, bar.isAscending, opacity, parents.chord.uid);
+}
+
+/**
+ * @param {Pitch} pitch
+ * @param {number} x
+ */
+function drawPitch(pitch, x, knownParents={section:undefined, chord:undefined}) {
+    const parents = (knownParents.section === undefined && knownParents.chord === undefined) ? pitch.getParents() : knownParents;
+    const left = x + pitch.leftOffset;
+    const right = x + settings.chordWidth + pitch.rightOffset;
+    const frequency = pitch.getFrequency({section:parents.section});
+    const svgY = freqToSvgY(frequency);
+
+    addPitchLine(left, right, svgY, settings.pitchLineColor, 1, settings.pitchLineWidth, parents.chord.uid);
 }
 
 export function freqToSvgY(frequency) {

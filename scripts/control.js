@@ -1,6 +1,6 @@
-import { MAX_DIMENSION, monzoToRatio } from './utils.js';
+import { MAX_DIMENSION } from './utils.js';
 import { settings } from './settings.js'
-import { drawChord, drawSection, rawToSvgCoords, svgYToFreq, viewport, viewportContainer } from './renderer.js';
+import { drawChord, drawSection, rawToSvgCoords, svgYToFreq } from './renderer.js';
 import { activeProject, Section, Chord, Pitch } from './chord.js';
 
 export let inputSelections = {
@@ -15,18 +15,14 @@ export let inputSelections = {
  * */
 let hoverInfo;
 let prevHoverInfo;
+let previewChord;
 
 export function handleMouseMove(offsetX, offsetY) {
     const coords = rawToSvgCoords(offsetX, offsetY);
     prevHoverInfo = hoverInfo;
     hoverInfo = getInfoAtPosition(coords.x, coords.y);
 
-    if (prevHoverInfo && prevHoverInfo.chord && (!hoverInfo.chord || prevHoverInfo.chord !== hoverInfo.chord)) {
-        prevHoverInfo.chord.rejectPreviewElements();
-    }
-
     refreshPreview(coords.x, coords.y, hoverInfo);
-    if (prevHoverInfo && prevHoverInfo.chord) drawChord(prevHoverInfo.chord);
 }
 
 export function handleMouseClick(offsetX=undefined, offsetY=undefined) {
@@ -177,6 +173,8 @@ function getInfoAtPosition(svgX, svgY) {
         nearestRulerLine: undefined,
     };
 
+    if (!svgX || !svgY) return info;
+
     // section
     if (activeProject.sections.length === 0) {
         info.section = null;
@@ -228,12 +226,21 @@ function getInfoAtPosition(svgX, svgY) {
 }
 
 /**
+ * Delete preview pitches and intervals and set new ones (if applicable).
+ * @param {number} svgX
+ * @param {number} svgY
  * @param {{x:number,y:number,section:Section|null,chord:Chord|null,newChord:boolean,nearestPitchMonzo:Array<number>|undefined,pitch:Pitch|null,nearestRulerLine:{monzo:Array<number>|undefined,octaveDistance:number|undefined}|undefined}} knownInfo
  */
-function refreshPreview(svgX, svgY, knownInfo=undefined) {
+export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefined) {
     const info = knownInfo ? knownInfo : getInfoAtPosition(svgX, svgY);
+    if (previewChord) {
+        previewChord.rejectPreviewElements();
+        drawChord(previewChord);
+        previewChord = null;
+    } 
     
     if (info.chord) {
+        previewChord = info.chord;
         switch (inputSelections.inputMode) {
             case 'interval':
                 info.chord.setPreviewInterval(info.pitch.monzo, inputSelections.dim, inputSelections.dir === 1);

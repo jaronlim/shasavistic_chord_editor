@@ -16,6 +16,9 @@ function addViewportMouseListeners() {
     viewport.addEventListener('click', (event) => {
         control.handleMouseClick(event.offsetX, event.offsetY);
     });
+    viewport.addEventListener('mouseleave', (event) => {
+        control.refreshPreview();
+    });
 }
 
 function addKeyPressListener() {

@@ -1,5 +1,4 @@
 import { settings } from './settings.js';
-import { monzoToRatio, C_0 } from './utils.js';
 import { initializeUi } from './input.js';
 import { KeyArea, Project, Section } from './chord.js';
 import { drawKeyArea, viewportContainer } from './renderer.js';

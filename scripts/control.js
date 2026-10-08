@@ -199,19 +199,19 @@ function getInfoAtPosition(svgX, svgY) {
         info.beyondChords = true;
     }
 
-    // pitch (not preview)
+    // pitch (not preview=1)
     let positionRatio = svgYToFreq(svgY) / info.section.keyArea.referenceFreq;
     if (info.chord) {
         info.nearestPitchMonzo = Infinity;
         for (let pitch of info.chord.pitches) {
             if (pitch.previewType !== 0) continue;
             let pitchRatio = pitch.getRatio();
-            if (Math.abs(Math.log2(pitchRatio) - Math.log2(positionRatio)) < info.nearestPitchMonzo) {
+            if (Math.abs(pitchRatio - positionRatio) < info.nearestPitchMonzo) {
                 info.nearestPitchMonzo = Math.abs(pitchRatio - positionRatio);
                 info.pitch = pitch;
             }
         }
-    }   
+    }
     info.nearestRulerLine = info.section.keyArea.closestMonzoFromRatio(positionRatio);
 
     return info;

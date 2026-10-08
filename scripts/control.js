@@ -1,6 +1,6 @@
 import { MAX_DIMENSION } from './utils.js';
 import { settings } from './settings.js'
-import { drawChord, drawSection, rawToSvgCoords, svgYToFreq } from './renderer.js';
+import { drawChord, drawSection, getChordX, rawToSvgCoords, svgYToFreq } from './renderer.js';
 import { activeProject, Section, Chord, Pitch } from './chord.js';
 
 export let inputSelections = {
@@ -14,12 +14,11 @@ export let inputSelections = {
  * @type {{x:number,y:number,section:Section|null,chord:Chord|null,newChord:boolean,nearestPitchMonzo:Array<number>|undefined,pitch:Pitch|null,nearestRulerLine:{monzo:Array<number>|undefined,octaveDistance:number|undefined}|undefined}}
  * */
 let hoverInfo;
-let prevHoverInfo;
 let previewChord;
+let previewNewChord;
 
 export function handleMouseMove(offsetX, offsetY) {
     const coords = rawToSvgCoords(offsetX, offsetY);
-    prevHoverInfo = hoverInfo;
     hoverInfo = getInfoAtPosition(coords.x, coords.y);
 
     refreshPreview(coords.x, coords.y, hoverInfo);
@@ -44,21 +43,14 @@ export function handleMouseClick(offsetX=undefined, offsetY=undefined) {
  * @param {{x:number,y:number,section:Section|null,chord:Chord|null,newChord:boolean,nearestPitchMonzo:Array<number>|undefined,pitch:Pitch|null,nearestRulerLine:{monzo:Array<number>|undefined,octaveDistance:number|undefined}|undefined}} info
  */
 function inputInterval(info) {
-    // if (info.beyondChords) {
-    //     const chord = new Chord(info.nearestRulerLine.monzo);
-    //     if (inputSelections.dim !== 0) {
-    //         chord.inputInterval(chord.rootMonzo, inputSelections.dim, inputSelections.dir === 1);
-    //     }
-    //     info.section.addChord(chord);
-    // } else 
     if (info.chord) {
         info.chord.acceptPreviewElements();
-    }
-    else {
+    } else {
         const chord = new Chord(info.nearestRulerLine.monzo);
         info.section.addChord(chord);
         chord.inputInterval(chord.rootMonzo, inputSelections.dim, inputSelections.dir === 1);
     }
+    info.section.refitKeyArea();
     drawSection(info.section);
 }
 
@@ -243,7 +235,11 @@ export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefin
         previewChord = info.chord;
         switch (inputSelections.inputMode) {
             case 'interval':
-                info.chord.setPreviewInterval(info.pitch.monzo, inputSelections.dim, inputSelections.dir === 1);
+                if (info.pitch) {
+                    info.chord.setPreviewInterval(info.pitch.monzo, inputSelections.dim, inputSelections.dir === 1);
+                } else {
+                    info.chord.setPreviewInterval(info.nearestRulerLine.monzo, inputSelections.dim, inputSelections.dir === 1);
+                }
                 break;
             case 'pitch':
                 
@@ -251,8 +247,20 @@ export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefin
         }
         drawChord(info.chord);
     }
+
     if (info.beyondChords) {
-        
+        previewNewChord = new Chord(info.nearestRulerLine.monzo);
+        const rootPitch = previewNewChord.pitches[0];
+        rootPitch.previewType = 1;
+        previewNewChord.setPreviewInterval(rootPitch.monzo, inputSelections.dim, inputSelections.dir === 1);
+
+        let previewX = info.section.chords.length > 0
+            ? getChordX(info.section.chords[info.section.chords.length - 1]) + settings.chordWidth + settings.chordSpacing
+            : settings.leftPadding;
+
+        drawChord(previewNewChord, previewX, {section:info.section});
+        previewChord = previewNewChord;
     } else {
+
     }
 }

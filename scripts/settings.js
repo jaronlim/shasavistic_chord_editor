@@ -54,7 +54,7 @@ export let settings = {
     primaryLineOpacity: 0.4,
     secondaryLineOpacity: 0.3,
     leftPadding: 50,
-    rightPadding: 50,
+    rightPadding: 51,
 
     finalSectionRightBuffer: 500,
     autoScrollToNewChord: true,

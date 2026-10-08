@@ -1,5 +1,7 @@
+import { activeProject } from './chord.js';
 import * as control from './control.js';
-import { viewport } from './renderer.js';
+import { refitSvgContent, viewport, viewportContainer } from './renderer.js';
+import { settings } from './settings.js';
 
 export function initializeUi() {
     addViewportMouseListeners();
@@ -29,7 +31,9 @@ function addKeyPressListener() {
 
 function addWindowResizeListener() {
     window.addEventListener('resize', (event) => {
-
+        settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
+        activeProject.sections[activeProject.sections.length - 1].refitKeyArea();
+        refitSvgContent();
     });
 }
 

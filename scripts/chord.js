@@ -1,3 +1,4 @@
+import { drawKeyArea } from './renderer.js';
 import { settings } from './settings.js';
 import { monzoToRatio, MAX_DIMENSION, monzoToFreq, newUID, addArrays, scaleMonzo, addMonzos, monzosEqual, addDimToMonzo } from './utils.js';
 
@@ -75,6 +76,10 @@ export class Section {
             width += settings.chordSpacing;
         }
         return width;
+    }
+
+    refitKeyArea(useRightBuffer=true) {
+        drawKeyArea(this.keyArea, useRightBuffer);
     }
 }
 
@@ -235,7 +240,6 @@ export class Chord {
         let minPitch = this.pitches[0];
         for (let pitch of this.pitches) {
             if (pitch.previewType === 0 && pitch.getRatio() < minPitch.getRatio()) {
-                console.log(pitch);
                 minPitch = pitch;
             }
         }
@@ -297,9 +301,10 @@ export class Chord {
         console.assert(dim >= 0 && dim <= MAX_DIMENSION, `Dimension (${dim}) out of bounds.`);
         
         // Check that parent exists
-        const parent = this.getPitchFromMonzo(fromMonzo);
-        if (!parent) {
-            return;
+        const existingParent = this.getPitchFromMonzo(fromMonzo);
+        const parent = existingParent ? existingParent : this.addPitch(fromMonzo);
+        if (!existingParent) {
+            parent.previewType = 1;
         }
         
         if (dim === 0) {

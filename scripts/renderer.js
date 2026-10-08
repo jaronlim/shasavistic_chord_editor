@@ -19,9 +19,8 @@ export function refitSvgContent() {
     let viewportHeight = Math.max(bbox.height, viewportContainer.clientHeight);
     viewport.setAttribute('viewBox', `${bbox.x - settings.horizPadding} ${viewportY - settings.vertPadding} ${bbox.width + settings.horizPadding * 2} ${viewportHeight + settings.vertPadding * 2}`);
     viewport.setAttribute('width', bbox.width + settings.horizPadding * 2);
-    viewport.setAttribute('height', viewportHeight);
+    viewport.setAttribute('height', viewportHeight + settings.vertPadding * 2);
     viewportContainer.scrollTop = oldScrollTop + oldViewportY - viewportY;
-    // mouseY += oldViewportY - viewportY;
 }
 
 /**
@@ -45,7 +44,7 @@ export function drawSection(section) {
 /**
  * @param {KeyArea} keyArea
  */
-export function drawKeyArea(keyArea) {
+export function drawKeyArea(keyArea, useRightBuffer=true) {
     removeStrayElements();
     const parents = keyArea.getParents();
     const parentProject = parents.project;
@@ -77,7 +76,7 @@ export function drawKeyArea(keyArea) {
 
     // Get horizontal rendering bounds
 
-    let width = parentSection.getWidth() + settings.chordWidth + settings.finalSectionRightBuffer;
+    let width = parentSection.getWidth() + settings.chordWidth + (useRightBuffer ? settings.finalSectionRightBuffer : 0);
 
     let minX = 0;
     for (let section of parentProject.sections) {
@@ -90,10 +89,7 @@ export function drawKeyArea(keyArea) {
 
     // - Delete existing lines
 
-    const elements = keyAreasViewportGroup.getElementsByClassName(keyArea.uid);
-    Array.prototype.forEach.call(elements, (el) => {
-        el.remove();
-    });
+    removeClassFromViewport(keyArea.uid);
 
     // - Draw tonic
 
@@ -223,10 +219,10 @@ export function untangleChordForRulerView(chord) {
         stableStacksLeft.push(stack);
         for (let bar of stack.bars) {
             bar.leftOffset = stack.offset * offsetDistance;
-            bar.getBottomPitch().leftOffset = stack.offset * offsetDistance;
-            bar.getTopPitch().leftOffset = stack.offset * offsetDistance;
-            stablePitchesLeft.add(bar.getBottomPitch());
-            stablePitchesLeft.add(bar.getTopPitch());
+            bar.getBottomPitch({chord:chord}).leftOffset = stack.offset * offsetDistance;
+            bar.getTopPitch({chord:chord}).leftOffset = stack.offset * offsetDistance;
+            stablePitchesLeft.add(bar.getBottomPitch({chord:chord}));
+            stablePitchesLeft.add(bar.getTopPitch({chord:chord}));
         }
     }
 
@@ -241,10 +237,10 @@ export function untangleChordForRulerView(chord) {
         stableStacksRight.push(stack);
         for (let bar of stack.bars) {
             bar.rightOffset = stack.offset * offsetDistance * -1;
-            bar.getBottomPitch().rightOffset = stack.offset * offsetDistance * -1;
-            bar.getTopPitch().rightOffset = stack.offset * offsetDistance * -1;
-            stablePitchesRight.add(bar.getBottomPitch());
-            stablePitchesRight.add(bar.getTopPitch());
+            bar.getBottomPitch({chord:chord}).rightOffset = stack.offset * offsetDistance * -1;
+            bar.getTopPitch({chord:chord}).rightOffset = stack.offset * offsetDistance * -1;
+            stablePitchesRight.add(bar.getBottomPitch({chord:chord}));
+            stablePitchesRight.add(bar.getTopPitch({chord:chord}));
         }
     }
 
@@ -272,8 +268,8 @@ export function untangleChordForRulerView(chord) {
 
     // fix bars to now-set pitches
     for (let bar of chord.bars) {
-        const topPitch = bar.getTopPitch();
-        const bottomPitch = bar.getBottomPitch();
+        const topPitch = bar.getTopPitch({chord:chord});
+        const bottomPitch = bar.getBottomPitch({chord:chord});
         if (bar.dim === 4) {
             bar.leftOffset = bottomPitch ? bottomPitch.leftOffset : 0;
             bar.rightOffset = topPitch ? topPitch.rightOffset : 0;
@@ -293,7 +289,7 @@ export function untangleChordForRulerView(chord) {
 function getBarStack(chord, bar, calledFrom=null) {
     const topPitch = chord.getPitchFromMonzo(bar.getTopMonzo());
     const bottomPitch = chord.getPitchFromMonzo(bar.getBottomMonzo());
-    let stackedBarList = [...(topPitch ? topPitch.getBars() : []), ...(bottomPitch ? bottomPitch.getBars() : [])];
+    let stackedBarList = [...(topPitch ? topPitch.getBars({chord:chord}) : []), ...(bottomPitch ? bottomPitch.getBars({chord:chord}) : [])];
     let stack = [bar];
     for (let stackedBar of stackedBarList) {
         if (stackedBar === bar) continue;
@@ -304,40 +300,43 @@ function getBarStack(chord, bar, calledFrom=null) {
     return stack;
 }
 
+export function getChordX(chord, knownParents=undefined) {
+    const parents = knownParents ? knownParents : chord.getParents();
+    const parentSection = parents.section;
+    let thisX = settings.leftPadding;
+    for (let section of parents.project.sections) {
+        if (section === parentSection) {
+            break;
+        } else {
+            thisX += section.getWidth();
+        }
+    }
+    for (let prevChords of parents.section.chords) {
+        if (prevChords === chord) {
+            break;
+        } else {
+            thisX += chord.getWidth() + settings.chordSpacing;
+        }
+    }
+    return thisX;
+}
+
+
 /**
  * @param {Chord} chord
+ * @param {{section:Section}} knownParents
  */
-export function drawChord(chord, knownX=undefined) {
+export function drawChord(chord, knownX=undefined, knownParents=undefined) {
     removeStrayElements();
     removeClassFromViewport(chord.uid);
 
     untangleChordForRulerView(chord);
 
-    const parents = chord.getParents();
+    const parents = knownParents ? knownParents : chord.getParents();
     if (!parents) return;
     const parentSection = parents.section;
 
-    let thisX;
-
-    if (knownX) {
-        thisX = knownX;
-    } else {
-        thisX = settings.leftPadding;
-        for (let section of parents.project.sections) {
-            if (section === parentSection) {
-                break;
-            } else {
-                thisX += section.getWidth();
-            }
-        }
-        for (let prevChords of parents.section.chords) {
-            if (prevChords === chord) {
-                break;
-            } else {
-                thisX += chord.getWidth() + settings.chordSpacing;
-            }
-        }
-    }
+    const thisX = knownX ? knownX : getChordX(chord);
 
     for (let pitch of chord.pitches) {
         const frequency = pitch.getFrequency(parents);

@@ -16,10 +16,10 @@ export function initializeUi() {
 
 function addViewportMouseListeners() {
     viewport.addEventListener('mousemove', (event) => {
-        control.handleMouseMove(event.offsetX, event.offsetY);
+        control.handleMouseMove(event.offsetX + settings.horizPadding, event.offsetY - settings.vertPadding);
     });
     viewport.addEventListener('click', (event) => {
-        control.handleMouseClick(event.offsetX, event.offsetY);
+        control.handleMouseClick(event.offsetX + settings.horizPadding, event.offsetY - settings.vertPadding);
     });
     viewport.addEventListener('mouseleave', (event) => {
         control.refreshPreview();

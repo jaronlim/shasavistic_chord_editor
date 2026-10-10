@@ -1,5 +1,6 @@
 import { activeProject } from './chord.js';
 import * as control from './control.js';
+import { build1dAscentSymbol } from './defs.js';
 import { refitSvgContent, viewport, viewportContainer } from './renderer.js';
 import { settings } from './settings.js';
 
@@ -9,6 +10,8 @@ export function initializeUi() {
     addWindowResizeListener();
     addMenuButtonClickListeners();
     addSaveLoadClickListeners();
+
+    build1dAscentSymbol();
 }
 
 function addViewportMouseListeners() {

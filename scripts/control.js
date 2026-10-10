@@ -16,6 +16,7 @@ export let inputSelections = {
 let hoverInfo;
 let previewChord;
 let previewNewChord;
+let previewEditPitch;
 
 export function handleMouseMove(offsetX, offsetY) {
     const coords = rawToSvgCoords(offsetX, offsetY);
@@ -54,8 +55,26 @@ function inputInterval(info) {
     drawSection(info.section);
 }
 
+/**
+ * @param {{x:number,y:number,section:Section|null,chord:Chord|null,newChord:boolean,nearestPitchMonzo:Array<number>|undefined,pitch:Pitch|null,nearestRulerLine:{monzo:Array<number>|undefined,octaveDistance:number|undefined}|undefined}} info
+ */
 function inputEditPitch(info) {
+    if (info.pitch) {
+        const x = getChordX(info.chord);
+        const left = x + info.pitch.leftOffset;
+        const right = x + settings.chordWidth + info.pitch.rightOffset;
+        const center = (left + right) / 2;
 
+        if (info.x < center) {
+            info.pitch.isLowOpacity = !info.pitch.isLowOpacity;
+        } else {
+            info.pitch.isDashed = !info.pitch.isDashed;
+        }
+
+        info.pitch.showEditingOptions = false;
+        
+        drawSection(info.section);
+    }
 }
 
 export function handleKeyPress(key) {
@@ -229,7 +248,7 @@ export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefin
         previewChord.rejectPreviewElements();
         drawChord(previewChord);
         previewChord = null;
-    } 
+    }
     
     if (info.chord) {
         previewChord = info.chord;
@@ -242,11 +261,15 @@ export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefin
                 }
                 break;
             case 'pitch':
-                
+                if (info.pitch) {
+                    info.pitch.showEditingOptions = true;
+                }
                 break;  
         }
         drawChord(info.chord);
     }
+
+    if (inputSelections.inputMode === 'pitch') return;
 
     if (info.beyondChords) {
         previewNewChord = new Chord(info.nearestRulerLine.monzo);

@@ -465,6 +465,9 @@ export class Chord {
             } else if (pitch.previewType === -1) {
                 pitch.previewType = 0;
             }
+            if (pitch.showEditingOptions) {
+                pitch.showEditingOptions = false;
+            }
         }
     }
 
@@ -499,6 +502,7 @@ export class Pitch {
         this.isSounding = true;
 
         this.previewType = 0; // 0=none; 1=preview_add; -1=preview_del
+        this.showEditingOptions = false;
 
         this.leftOffset = 0;
         this.rightOffset = 0;

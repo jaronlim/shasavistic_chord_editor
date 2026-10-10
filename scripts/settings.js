@@ -46,6 +46,9 @@ export let settings = {
     pitchLineSelectedWidth: 4,
     pitchLineSelectedColor: 'white',
     intervalBarWidth: 8,
+    pitchDashLength: 5,
+    pitchDashSpace: 5,
+    pitchLowOpacity: 0.5,
 
     // KEY AREA SETTINGS
     tonicLineWidth:  2,

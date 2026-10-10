@@ -378,7 +378,39 @@ function drawPitch(pitch, x, knownParents={section:undefined, chord:undefined}) 
     const frequency = pitch.getFrequency({section:parents.section});
     const svgY = freqToSvgY(frequency);
 
-    addPitchLine(left, right, svgY, settings.pitchLineColor, 1, settings.pitchLineWidth, parents.chord.uid);
+    if (pitch.showEditingOptions) {
+        const center = (left + right) / 2;
+        const leftHalf = addPitchLine(left, center, svgY, settings.pitchLineColor, 1, settings.pitchLineWidth, parents.chord.uid);
+        const rightHalf = addPitchLine(center, right, svgY, settings.pitchLineColor, 1, settings.pitchLineWidth, parents.chord.uid);
+
+        // TODO: use setting for stroke-dasharray and opacity
+        if (pitch.isDashed) {
+            leftHalf.setAttribute('stroke-dasharray', `${settings.pitchDashLength}, ${settings.pitchDashSpace}`);
+        } else {
+            rightHalf.setAttribute('stroke-dasharray', `${settings.pitchDashLength}, ${settings.pitchDashSpace}`);
+        }
+
+        if (pitch.isLowOpacity) {
+            rightHalf.setAttribute('opacity', settings.pitchLowOpacity);
+        } else {
+            leftHalf.setAttribute('opacity', settings.pitchLowOpacity);
+        }
+
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.appendChild(rightHalf);
+        group.appendChild(leftHalf);
+        group.setAttribute('class', 'showPitchEditOptions ' + parents.chord.uid);
+        viewport.appendChild(group);
+
+    } else {
+        const line = addPitchLine(left, right, svgY, settings.pitchLineColor, 1, settings.pitchLineWidth, parents.chord.uid);
+        if (pitch.isLowOpacity) {
+            line.setAttribute('opacity', settings.pitchLowOpacity);
+        }
+        if (pitch.isDashed) {
+            line.setAttribute('stroke-dasharray', `${settings.pitchDashLength}, ${settings.pitchDashSpace}`);
+        }
+    }
 }
 
 export function freqToSvgY(frequency) {

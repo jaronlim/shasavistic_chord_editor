@@ -498,7 +498,7 @@ export class Pitch {
         this.isLowOpacity = false;
         this.isSounding = true;
 
-        this.previewType = 0; // 0=none; 1=preview_add; 2=preview_del
+        this.previewType = 0; // 0=none; 1=preview_add; -1=preview_del
 
         this.leftOffset = 0;
         this.rightOffset = 0;

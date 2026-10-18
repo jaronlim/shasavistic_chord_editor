@@ -76,6 +76,7 @@ function inputEditPitch(info) {
             info.pitch.isLowOpacity = !info.pitch.isLowOpacity;
         } else {
             info.pitch.isDashed = !info.pitch.isDashed;
+            info.pitch.isSounding = !info.pitch.isDashed;
         }
 
         info.pitch.showEditingOptions = false;

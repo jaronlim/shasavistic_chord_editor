@@ -64,7 +64,7 @@ function addMenuButtonClickListeners() {
     });
 
     document.getElementById('volume-button').addEventListener('click', () => {
-
+        control.handleVolumeButtonClick();
     });
 }
 

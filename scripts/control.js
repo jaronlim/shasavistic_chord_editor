@@ -2,6 +2,7 @@ import { MAX_DIMENSION } from './utils.js';
 import { settings } from './settings.js'
 import { drawChord, drawSection, getChordX, rawToSvgCoords, svgYToFreq } from './renderer.js';
 import { activeProject, Section, Chord, Pitch } from './chord.js';
+import { setVolume, soundChord } from './sound.js';
 
 export let inputSelections = {
     /** @type {'interval'|'pitch'} */
@@ -32,27 +33,33 @@ export function handleMouseClick(offsetX=undefined, offsetY=undefined) {
     refreshPreview(coords.x, coords.y, info);
     switch(inputSelections.inputMode) {
         case 'interval':
-            inputInterval(info);
+            const chord = inputInterval(info);
+            soundChord(chord);
             break;
         case 'pitch':
             inputEditPitch(info);
+            if (info.chord) soundChord(info.chord);
             break;
     }
 }
 
 /**
+ * Input the interval on a chord or the background ruler, and return the chord
  * @param {{x:number,y:number,section:Section|null,chord:Chord|null,newChord:boolean,nearestPitchMonzo:Array<number>|undefined,pitch:Pitch|null,nearestRulerLine:{monzo:Array<number>|undefined,octaveDistance:number|undefined}|undefined}} info
  */
 function inputInterval(info) {
+    let chord;
     if (info.chord) {
+        chord = info.chord;
         info.chord.acceptPreviewElements();
     } else {
-        const chord = new Chord(info.nearestRulerLine.monzo);
+        chord = new Chord(info.nearestRulerLine.monzo);
         info.section.addChord(chord);
         chord.inputInterval(chord.rootMonzo, inputSelections.dim, inputSelections.dir === 1);
     }
     info.section.refitKeyArea();
     drawSection(info.section);
+    return chord;
 }
 
 /**
@@ -285,5 +292,25 @@ export function refreshPreview(svgX=undefined, svgY=undefined, knownInfo=undefin
         previewChord = previewNewChord;
     } else {
 
+    }
+}
+
+let volumeSetting = 2;
+/**
+ * Set the volume and update the image on the button
+ */
+export function handleVolumeButtonClick() {
+    const volumeButton = document.getElementById('volume-button');
+    volumeSetting -= 1;
+    if (volumeSetting < 0) volumeSetting = 2;
+    if (volumeSetting === 2) {
+        setVolume(0);
+        volumeButton.firstElementChild.setAttribute('src', 'images/volume-2.png')
+    } else if (volumeSetting === 1) {
+        setVolume(-18);
+        volumeButton.firstElementChild.setAttribute('src', 'images/volume-1.png')
+    } else {
+        setVolume(-Infinity);
+        volumeButton.firstElementChild.setAttribute('src', 'images/volume-0.png')
     }
 }

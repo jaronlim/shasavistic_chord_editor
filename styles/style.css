@@ -1,11 +1,11 @@
 @font-face {
     font-family: 'Lapisia';
-    src: url(fonts/Lapisia.woff2) format('woff2');
+    src: url(../fonts/Lapisia.woff2) format('woff2');
 }
 
 @font-face {
     font-family: Fglyph;
-    src: url(fonts/Fglyph.woff2);
+    src: url(../fonts/Fglyph.woff2);
 }
 
 body {
@@ -24,6 +24,14 @@ body {
     /* background-color:antiquewhite; */
     padding-top: 10px;
     transition: 0.5s;
+}
+
+#save-a:link, #save-a:visited, #load-a:link, #load-a:visited {
+    color: #f2f2f3;
+}
+
+.save-load-separator {
+    color: #f2f2f3;
 }
 
 #viewport-frame {

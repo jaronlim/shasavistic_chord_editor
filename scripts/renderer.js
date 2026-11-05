@@ -9,6 +9,19 @@ const keyAreasViewportGroup = document.getElementById('keyAreas');
 let viewportX = 0;
 let viewportY = 0;
 
+export function reloadViewport() {
+    const defs = viewport.querySelector('defs');
+    for (const child of [...viewport.children]) {
+        if (child !== defs && child !== keyAreasViewportGroup) child.remove();
+    }
+    keyAreasViewportGroup.replaceChildren();
+    for (let section of activeProject.sections) {
+        drawKeyArea(section.keyArea);
+        drawSection(section);
+    }
+    refitSvgContent();
+}
+
 export function refitSvgContent() {
     const oldViewportY = viewportY;
     const oldScrollTop = viewportContainer.scrollTop;

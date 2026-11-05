@@ -1,7 +1,7 @@
 import { MAX_DIMENSION } from './utils.js';
 import { settings } from './settings.js'
-import { drawChord, drawSection, getChordX, rawToSvgCoords, svgYToFreq } from './renderer.js';
-import { activeProject, Section, Chord, Pitch } from './chord.js';
+import { drawChord, drawKeyArea, drawSection, getChordX, rawToSvgCoords, reloadViewport, svgYToFreq, viewport } from './renderer.js';
+import { activeProject, Section, Chord, Pitch, Project, KeyArea, IntervalBar } from './chord.js';
 import { setVolume, soundChord } from './sound.js';
 
 export let inputSelections = {
@@ -314,4 +314,52 @@ export function handleVolumeButtonClick() {
         setVolume(-Infinity);
         volumeButton.firstElementChild.setAttribute('src', 'images/volume-0.png')
     }
+}
+
+/**
+ * Save the project
+ * @param {Project} project
+ */
+export async function saveProjectAsFile(project) {
+    const file = new Blob([JSON.stringify(project)], {type: 'json'});
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = 'shasavistic_' + project.meta.title + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    a.remove();
+}
+
+export async function loadProjectFromFile() {
+    if (!confirm('This will clear the existing project. Load from file?')) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'application/json,.json';
+    input.onchange = async () => {
+        const file = input.files[0];
+        if (!file) return;
+        const data = JSON.parse(await file.text());
+        const project = new Project(data.meta?.title, data.meta?.desc);
+        project.sections = (data.sections ?? []).map(s => {
+            const section = new Section(reviveKeyArea(s.keyArea));
+            section.chords = (s.chords ?? []).map(reviveChord);
+            return section;
+        });
+        reloadViewport();
+    };
+    input.click();
+}
+
+function reviveKeyArea(data) {
+    const keyArea = new KeyArea(data.referenceFreq, data.primaryAxes, data.secondaryAxes, data.tonicMonzo);
+    return Object.assign(keyArea, data);
+}
+
+function reviveChord(data) {
+    const chord = new Chord();
+    Object.assign(chord, data);
+    chord.pitches = (data.pitches ?? []).map(p => Object.assign(new Pitch(p.monzo), p));
+    chord.bars = (data.bars ?? []).map(b => Object.assign(new IntervalBar(b.baseMonzo, b.dim, b.isAscending), b));
+    return chord;
 }

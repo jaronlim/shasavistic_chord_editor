@@ -70,10 +70,10 @@ function addMenuButtonClickListeners() {
 
 function addSaveLoadClickListeners() {
     document.getElementById('save-a').addEventListener('click', async () => {
-
+        await control.saveProjectAsFile(activeProject);
     });
 
     document.getElementById('load-a').addEventListener('click', async () => {
-
+        control.loadProjectFromFile();
     });
 }

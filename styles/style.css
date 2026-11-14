@@ -26,8 +26,9 @@ body {
     transition: 0.5s;
 }
 
-#save-a:link, #save-a:visited, #load-a:link, #load-a:visited {
+.nav {
     color: #f2f2f3;
+    text-decoration: none;
 }
 
 .nav-separator {

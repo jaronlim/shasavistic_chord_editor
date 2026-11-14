@@ -9,7 +9,7 @@ export function initializeUi() {
     addKeyPressListener();
     addWindowResizeListener();
     addMenuButtonClickListeners();
-    addSaveLoadClickListeners();
+    addNavBarClickListeners();
 
     build1dAscentSymbol();
 }
@@ -68,12 +68,16 @@ function addMenuButtonClickListeners() {
     });
 }
 
-function addSaveLoadClickListeners() {
+function addNavBarClickListeners() {
     document.getElementById('save-a').addEventListener('click', async () => {
         await control.saveProjectAsFile(activeProject);
     });
 
     document.getElementById('load-a').addEventListener('click', async () => {
         control.loadProjectFromFile();
+    });
+
+    document.getElementById('clear-a').addEventListener('click', () => {
+        control.resetProject();
     });
 }

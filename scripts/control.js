@@ -1,6 +1,6 @@
 import { MAX_DIMENSION } from './utils.js';
 import { settings } from './settings.js'
-import { drawChord, drawKeyArea, drawSection, getChordX, rawToSvgCoords, reloadViewport, svgYToFreq, viewport } from './renderer.js';
+import { drawChord, drawSection, getChordX, rawToSvgCoords, reloadViewport, svgYToFreq, viewport, viewportContainer } from './renderer.js';
 import { activeProject, Section, Chord, Pitch, Project, KeyArea, IntervalBar } from './chord.js';
 import { setVolume, soundChord } from './sound.js';
 
@@ -349,6 +349,14 @@ export async function loadProjectFromFile() {
         reloadViewport();
     };
     input.click();
+}
+
+export function resetProject(warn = true) {
+    if (warn) if (!confirm('Clear the existing project?')) return;
+    let project = new Project();
+    project.addSection(new Section(new KeyArea(261.63, [2], [4])));
+    settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
+    reloadViewport();
 }
 
 function reviveKeyArea(data) {

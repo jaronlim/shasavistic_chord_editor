@@ -1,3 +1,4 @@
+import { buildAxesGrid } from './axes-settings-ui.js';
 import { recomputeFinalSectionRightBuffer } from './control.js';
 import { build1dAscentSymbol } from './defs.js';
 import { refitSvgContent, reloadViewport } from './renderer.js';
@@ -66,7 +67,15 @@ const bindings = [];
 const pendingEffects = new Set();
 let effectFrame = null;
 
+function isValidInput(descriptor, input) {
+    return !descriptor.digitsOnly || /^[0-9-]+$/.test(input.value);
+}
+
 function commit(descriptor, input, controller, writeBack = false) {
+    if (!isValidInput(descriptor, input)) {
+        if (writeBack) controller.write(input, getSetting(descriptor.path));
+        return;
+    }
     const value = setSetting(descriptor.path, controller.read(input, descriptor));
     if (writeBack) controller.write(input, value);
     saveSettings();
@@ -127,6 +136,14 @@ function buildGroupHeader(group) {
     return row;
 }
 
+export function createSettingInput(descriptor) {
+    const input = controllers[descriptor.type].create(descriptor);
+    input.id = `setting-${descriptor.path.replace(/\./g, '-')}`;
+    bindings.push({ input, descriptor });
+    bindInput(input, descriptor);
+    return input;
+}
+
 function buildFieldRow(descriptor, tbody) {
     const row = document.createElement('tr');
     if (/\.\d+(?:\.|$)/.test(descriptor.path)) row.classList.add('settings-array-row');
@@ -136,15 +153,10 @@ function buildFieldRow(descriptor, tbody) {
     keyCell.textContent = descriptor.label;
 
     const valueCell = document.createElement('td');
-    const input = controllers[descriptor.type].create(descriptor);
-    input.id = `setting-${descriptor.path.replace(/\./g, '-')}`;
-    valueCell.appendChild(input);
+    valueCell.appendChild(createSettingInput(descriptor));
 
     row.append(keyCell, valueCell);
     tbody.appendChild(row);
-
-    bindings.push({ input, descriptor });
-    bindInput(input, descriptor);
 }
 
 function buildResetButton() {
@@ -167,6 +179,7 @@ export function initializeSettingsUi() {
 
     const groups = new Map();
     for (const descriptor of settingFields) {
+        if (descriptor.group === 'Axes') continue;
         let tbody = groups.get(descriptor.group);
         if (!tbody) {
             tbody = document.createElement('tbody');
@@ -177,6 +190,6 @@ export function initializeSettingsUi() {
         buildFieldRow(descriptor, tbody);
     }
 
-    popover.replaceChildren(table, buildResetButton());
+    popover.replaceChildren(buildAxesGrid(createSettingInput), table, buildResetButton());
     syncInputs();
 }

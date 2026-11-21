@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'shasavistic-chord-editor:settings:v1';
 
-const DIMENSION_LABELS = ['0D', '1D', '2D', '3D', '4D', '5D', '6D', '7D'];
-const PRIME_LABELS = ['2', '3', '5', '7', '11', '13', '17'];
+export const DIMENSION_LABELS = ['0D', '1D', '2D', '3D', '4D', '5D', '6D', '7D'];
+export const PRIME_LABELS = ['2', '3', '5', '7', '11', '13', '17'];
 
 const AXES = [
     [0],
@@ -32,13 +32,13 @@ function field(group, path, label, type, value, options = {}) {
 }
 
 function axisFields() {
-    return AXES.flatMap((monzo, dim) => monzo.map((value, prime) => field(
+    return DIMENSION_LABELS.flatMap((label, dim) => PRIME_LABELS.map((prime, index) => field(
         'Axes',
-        `axes.${dim}.${prime}`,
-        `${DIMENSION_LABELS[dim]} · p${PRIME_LABELS[prime]}`,
+        `axes.${dim}.${index}`,
+        `${label} · p${prime}`,
         'number',
-        value,
-        { min: -9, max: 9, step: 1, effect: 'defs' }
+        AXES[dim][index] ?? 0,
+        { min: -9, max: 9, step: 1, effect: 'defs', digitsOnly: true }
     )));
 }
 

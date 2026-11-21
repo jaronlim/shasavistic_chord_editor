@@ -351,13 +351,18 @@ export async function loadProjectFromFile() {
     input.click();
 }
 
+export function recomputeFinalSectionRightBuffer() {
+    settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
+}
+
 export function resetProject(warn = true) {
     if (warn) if (!confirm('Clear the existing project?')) return;
     let project = new Project();
     project.addSection(new Section(new KeyArea(261.63, [2], [4])));
-    settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
+    recomputeFinalSectionRightBuffer();
     reloadViewport();
 }
+
 
 function reviveKeyArea(data) {
     const keyArea = new KeyArea(data.referenceFreq, data.primaryAxes, data.secondaryAxes, data.tonicMonzo);

@@ -1,14 +1,16 @@
 import { activeProject } from './chord.js';
 import * as control from './control.js';
 import { build1dAscentSymbol } from './defs.js';
-import { refitSvgContent, viewport, viewportContainer } from './renderer.js';
+import { refitSvgContent, viewport } from './renderer.js';
 import { settings } from './settings.js';
+import { syncInputs } from './settings-ui.js';
 
 export function initializeUi() {
     addViewportMouseListeners();
     addKeyPressListener();
     addWindowResizeListener();
     addMenuButtonClickListeners();
+    addSettingsPopoverListener();
     addNavBarClickListeners();
 
     build1dAscentSymbol();
@@ -34,7 +36,7 @@ function addKeyPressListener() {
 
 function addWindowResizeListener() {
     window.addEventListener('resize', (event) => {
-        settings.finalSectionRightBuffer = viewportContainer.clientWidth - settings.chordWidth - settings.leftPadding - settings.rightPadding;
+        control.recomputeFinalSectionRightBuffer();
         activeProject.sections[activeProject.sections.length - 1].refitKeyArea();
         refitSvgContent();
     });
@@ -59,12 +61,14 @@ function addMenuButtonClickListeners() {
         control.setSelectedDir(-1);
     });
 
-    document.getElementById('settings-button').addEventListener('click', () => {
-
-    });
-
     document.getElementById('volume-button').addEventListener('click', () => {
         control.handleVolumeButtonClick();
+    });
+}
+
+function addSettingsPopoverListener() {
+    document.getElementById('settings-popover').addEventListener('toggle', (event) => {
+        if (event.newState === 'open') syncInputs();
     });
 }
 

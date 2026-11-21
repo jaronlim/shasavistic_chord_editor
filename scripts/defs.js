@@ -1,15 +1,19 @@
-import { monzoToRatio } from "./utils.js";
+import { viewport } from './renderer.js';
 import { settings } from "./settings.js"
+import { monzoToRatio } from "./utils.js";
 
 export function build1dAscentSymbol() {
     const defs = viewport.querySelector("defs");
+    const symbolId = '1d-bar-ascent-symbol';
+    defs.querySelector(`[id="${symbolId}"]`)?.remove();
+
     const height = Math.log2(monzoToRatio(settings.axes[1])) * settings.octaveScale;
     const arrowSize = 10;
     const arrowStrokeWidth = 2;
     const barWidth = 4;
     const overshoot = Math.SQRT2 * arrowStrokeWidth/4;
     let symbol = document.createElementNS("http://www.w3.org/2000/svg", "symbol");
-    symbol.setAttribute("id", "1d-bar-ascent-symbol");
+    symbol.setAttribute("id", symbolId);
     symbol.setAttribute("viewBox", `${- arrowSize - overshoot} ${-height} ${2 * (arrowSize + overshoot)} ${height}`);
     symbol.setAttribute("preserveAspectRatio", "xMinYMin");
     let bar = document.createElementNS("http://www.w3.org/2000/svg", "line");

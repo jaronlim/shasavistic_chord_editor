@@ -97,19 +97,55 @@ body {
   height: 50%;
   border-radius: 10px;
   font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 12px 18px;
+  overflow-y: auto;
 }
 
 #settings-table {
     width: 100%;
+    border-collapse: collapse;
 }
 
 #settings-table td {
-    padding: 5px;
-    color: green;
+    padding: 4px 8px;
+    color: #2b2b33;
+}
+
+#settings-table input[type="number"],
+#settings-table input[type="text"] {
+    width: 70px;
 }
 
 .settings-key-column {
     text-align: right;
+    width: 45%;
+}
+
+.settings-group-header {
+    padding: 12px 8px 4px;
+    text-align: left;
+    font-size: 0.9em;
+    letter-spacing: 0.04em;
+    color: #676681;
+    border-bottom: 1px solid #d3d3dc;
+}
+
+.settings-array-row .settings-key-column {
+    font-size: 0.85em;
+    color: #6f6f7d;
+}
+
+#reset-settings-button {
+    margin-top: 16px;
+    padding: 6px 12px;
+    border: 1px solid #676681;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+}
+
+#reset-settings-button:hover {
+    background: rgba(103, 102, 129, 0.12);
 }
 
 .menu-button {

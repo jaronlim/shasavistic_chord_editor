@@ -13,6 +13,7 @@ export function buildAxesGrid(createInput) {
     table.id = 'axes-settings-table';
 
     const caption = document.createElement('caption');
+    caption.className = 'settings-group-header';
     caption.textContent = AXES_GROUP;
     table.appendChild(caption);
 

@@ -125,6 +125,7 @@ body {
     padding: 12px 8px 4px;
     text-align: left;
     font-size: 0.9em;
+    font-weight: bold;
     letter-spacing: 0.04em;
     color: #676681;
     border-bottom: 1px solid #d3d3dc;
@@ -140,19 +141,15 @@ body {
     margin-bottom: 12px;
 }
 
-#axes-settings-table caption {
-    padding: 4px 8px 8px;
-    text-align: left;
-    font-size: 0.9em;
-    letter-spacing: 0.04em;
-    color: #676681;
-}
-
 #axes-settings-table th,
 #axes-settings-table td {
     padding: 2px 4px;
     color: #2b2b33;
     text-align: center;
+}
+
+#axes-settings-table th {
+    font-weight: normal;
 }
 
 #axes-settings-table input[type="number"] {

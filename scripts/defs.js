@@ -1,5 +1,5 @@
 import { viewport } from './renderer.js';
-import { settings } from "./settings.js"
+import { projectSettings, settings } from "./settings.js"
 import { monzoToRatio } from "./utils.js";
 
 export function build1dAscentSymbol() {
@@ -7,7 +7,7 @@ export function build1dAscentSymbol() {
     const symbolId = '1d-bar-ascent-symbol';
     defs.querySelector(`[id="${symbolId}"]`)?.remove();
 
-    const height = Math.log2(monzoToRatio(settings.axes[1])) * settings.octaveScale;
+    const height = Math.log2(monzoToRatio(projectSettings.axes[1])) * settings.octaveScale;
     const arrowSize = 10;
     const arrowStrokeWidth = 2;
     const barWidth = 4;

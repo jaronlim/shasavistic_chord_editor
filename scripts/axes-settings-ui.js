@@ -1,12 +1,10 @@
-import { DIMENSION_LABELS, PRIME_LABELS, settingFields } from './settings.js';
+import { DIMENSION_LABELS, PRIME_LABELS, projectSettingFields } from './settings.js';
 
 const AXES_GROUP = 'Axes';
 
 export function buildAxesGrid(createInput) {
     const fields = new Map(
-        settingFields
-            .filter((descriptor) => descriptor.group === AXES_GROUP)
-            .map((descriptor) => [descriptor.path, descriptor])
+        projectSettingFields.map((descriptor) => [descriptor.path, descriptor])
     );
 
     const table = document.createElement('table');

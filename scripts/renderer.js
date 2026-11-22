@@ -1,6 +1,6 @@
 import { Project, Section, KeyArea, Chord, Pitch, IntervalBar, activeProject, deletedUids } from './chord.js';
 import { addDimToMonzo, monzoToFreq, monzoToRatio } from './utils.js';
-import { settings } from './settings.js';
+import { projectSettings, settings } from './settings.js';
 
 export const viewport = document.getElementById('viewport');
 export const viewportContainer = document.getElementById('viewport-container');
@@ -117,7 +117,7 @@ export function drawKeyArea(keyArea, useRightBuffer=true) {
 
     for (let primaryAxis of keyArea.primaryAxes) {
         primaryAxis = Math.abs(primaryAxis);
-        let primaryIntervalHeight = Math.log2(monzoToRatio(settings.axes[primaryAxis])) * settings.octaveScale;
+        let primaryIntervalHeight = Math.log2(monzoToRatio(projectSettings.axes[primaryAxis])) * settings.octaveScale;
         // below
         let thisY = tonicY + primaryIntervalHeight;
         while (thisY < maxY) {
@@ -135,7 +135,7 @@ export function drawKeyArea(keyArea, useRightBuffer=true) {
         for (let secondaryAxis of keyArea.secondaryAxes) {
             secondaryAxis = Math.abs(secondaryAxis);
             if (secondaryAxis === primaryAxis) continue;
-            let secondaryIntervalHeight = Math.log2(monzoToRatio(settings.axes[secondaryAxis])) * settings.octaveScale;
+            let secondaryIntervalHeight = Math.log2(monzoToRatio(projectSettings.axes[secondaryAxis])) * settings.octaveScale;
 
             // below
             thisY = tonicY + primaryIntervalHeight - secondaryIntervalHeight;
@@ -153,7 +153,7 @@ export function drawKeyArea(keyArea, useRightBuffer=true) {
     }
     // secondary on tonic (not to be redrawn for each primary axis)
     for (let secondaryAxis of keyArea.secondaryAxes) {
-        let secondaryIntervalHeight = Math.log2(monzoToRatio(settings.axes[secondaryAxis])) * settings.octaveScale;
+        let secondaryIntervalHeight = Math.log2(monzoToRatio(projectSettings.axes[secondaryAxis])) * settings.octaveScale;
         let thisY = tonicY - secondaryIntervalHeight;
         keyAreasViewportGroup.appendChild(addLine(minX, maxX, thisY, thisY, settings.axisColors[secondaryAxis], settings.secondaryLineOpacity, settings.keyAreaLineWidth, keyArea.uid));
     }
@@ -435,7 +435,7 @@ export function svgYToFreq(svgY) {
 }
 
 function addBar(dim, x1, x2, startY, isAscending=true, opacity=1, classes='intervalBar') {
-    const height = Math.log2(monzoToRatio(settings.axes[dim])) * settings.octaveScale;
+    const height = Math.log2(monzoToRatio(projectSettings.axes[dim])) * settings.octaveScale;
     const defaultWidth = settings.intervalBarWidth;
     const halfPitchWidth = settings.pitchLineWidth / 2;
     if (!isAscending) {
@@ -446,8 +446,8 @@ function addBar(dim, x1, x2, startY, isAscending=true, opacity=1, classes='inter
             let bar = document.createElementNS('http://www.w3.org/2000/svg', 'use');
             bar.setAttribute('href', '#1d-bar-ascent-symbol');
             bar.setAttribute('x', x1);
-            bar.setAttribute('y', startY - Math.log2(monzoToRatio(settings.axes[1])) * settings.octaveScale);
-            bar.setAttribute('height', Math.log2(monzoToRatio(settings.axes[1])) * settings.octaveScale);
+            bar.setAttribute('y', startY - Math.log2(monzoToRatio(projectSettings.axes[1])) * settings.octaveScale);
+            bar.setAttribute('height', Math.log2(monzoToRatio(projectSettings.axes[1])) * settings.octaveScale);
             bar.setAttribute('opacity', opacity);
             bar.setAttribute('class', classes);
             return viewport.appendChild(bar);

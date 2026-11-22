@@ -1,5 +1,5 @@
 import { drawKeyArea } from './renderer.js';
-import { settings } from './settings.js';
+import { activateProjectSettings, createProjectSettings, projectSettings, settings } from './settings.js';
 import { monzoToRatio, MAX_DIMENSION, monzoToFreq, newUID, addArrays, scaleMonzo, addMonzos, monzosEqual, addDimToMonzo } from './utils.js';
 
 /** @type {Project} */
@@ -11,12 +11,16 @@ export class Project {
     /**
      * @param {string} title 
      * @param {string} desc 
+     * @param {object|null} settingsData
      */
-    constructor(title='untitled', desc='') {
+    constructor(title='untitled', desc='', settingsData=null) {
         this.meta = {
             title: title,
             desc: desc
         }
+
+        this.settings = createProjectSettings(settingsData);
+        activateProjectSettings(this.settings);
 
         /** @type {Array<Section>} */
         this.sections = [];
@@ -121,7 +125,7 @@ export class KeyArea {
         let closestMonzo;
         
         for (let primaryAxis of this.primaryAxes) {
-            const primaryAxisMonzo = settings.axes[primaryAxis];
+            const primaryAxisMonzo = projectSettings.axes[primaryAxis];
             const primaryLength = Math.log2(monzoToRatio(primaryAxisMonzo));
 
             const closestPrimaryCount = Math.round(targetPosition / primaryLength);
@@ -135,7 +139,7 @@ export class KeyArea {
             }
 
             for (let secondaryAxis of this.secondaryAxes) {
-                const secondaryAxisMonzo = settings.axes[secondaryAxis];
+                const secondaryAxisMonzo = projectSettings.axes[secondaryAxis];
                 const secondaryLength = Math.log2(monzoToRatio(secondaryAxisMonzo));
 
                 const closestSecondaryCount = Math.round((targetPosition - secondaryLength) / primaryLength);
@@ -588,7 +592,7 @@ export class IntervalBar {
 
     getTopMonzo() {
         if (this.isAscending) {
-            let topMonzo = addMonzos(this.baseMonzo, settings.axes[this.dim]);
+            let topMonzo = addMonzos(this.baseMonzo, projectSettings.axes[this.dim]);
             return topMonzo;
         } else {
             return [...this.baseMonzo];
@@ -609,7 +613,7 @@ export class IntervalBar {
         if (this.isAscending) {
             return [...this.baseMonzo];
         } else {
-            let bottomMonzo = addMonzos(this.baseMonzo, scaleMonzo(settings.axes[this.dim], -1));
+            let bottomMonzo = addMonzos(this.baseMonzo, scaleMonzo(projectSettings.axes[this.dim], -1));
             return bottomMonzo;
         }
     }

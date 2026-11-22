@@ -1,7 +1,9 @@
 import { MAX_DIMENSION } from './utils.js';
-import { settings } from './settings.js'
+import { projectSettings, settings, takeLegacyProjectSettings } from './settings.js'
+import { build1dAscentSymbol } from './defs.js';
 import { drawChord, drawSection, getChordX, rawToSvgCoords, reloadViewport, svgYToFreq, viewport, viewportContainer } from './renderer.js';
 import { activeProject, Section, Chord, Pitch, Project, KeyArea, IntervalBar } from './chord.js';
+import { syncInputs } from './settings-ui.js';
 import { setVolume, soundChord } from './sound.js';
 
 export let inputSelections = {
@@ -340,13 +342,17 @@ export async function loadProjectFromFile() {
         const file = input.files[0];
         if (!file) return;
         const data = JSON.parse(await file.text());
-        const project = new Project(data.meta?.title, data.meta?.desc);
+        const settingsData = data.settings ?? data.projectSettings ?? takeLegacyProjectSettings() ?? projectSettings;
+        const project = new Project(data.meta?.title, data.meta?.desc, settingsData);
         project.sections = (data.sections ?? []).map(s => {
             const section = new Section(reviveKeyArea(s.keyArea));
             section.chords = (s.chords ?? []).map(reviveChord);
             return section;
         });
+        build1dAscentSymbol();
+        recomputeFinalSectionRightBuffer();
         reloadViewport();
+        syncInputs();
     };
     input.click();
 }
@@ -357,10 +363,12 @@ export function recomputeFinalSectionRightBuffer() {
 
 export function resetProject(warn = true) {
     if (warn) if (!confirm('Clear the existing project?')) return;
-    let project = new Project();
+    let project = new Project(undefined, undefined, takeLegacyProjectSettings());
     project.addSection(new Section(new KeyArea(261.63, [2], [4])));
+    build1dAscentSymbol();
     recomputeFinalSectionRightBuffer();
     reloadViewport();
+    syncInputs();
 }
 
 

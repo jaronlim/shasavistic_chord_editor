@@ -101,6 +101,46 @@ body {
   overflow-y: auto;
 }
 
+.settings-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.settings-tab {
+    padding: 6px 12px;
+    border: 1px solid #d3d3dc;
+    border-bottom-color: #676681;
+    border-radius: 4px 4px 0 0;
+    background: transparent;
+    color: #676681;
+    font: inherit;
+    cursor: pointer;
+}
+
+.settings-tab:hover {
+    background: rgba(103, 102, 129, 0.12);
+}
+
+.settings-tab[aria-selected="true"] {
+    background: #676681;
+    border-color: #676681;
+    color: #ffffff;
+}
+
+.settings-tab:focus-visible {
+    outline: 2px solid #676681;
+    outline-offset: 2px;
+}
+
+.settings-tab-panel[hidden] {
+    display: none;
+}
+
+.settings-tab-panel {
+    padding-top: 4px;
+}
+
 #settings-table {
     width: 100%;
     border-collapse: collapse;

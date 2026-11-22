@@ -3,7 +3,7 @@ const STORAGE_KEY = 'shasavistic-chord-editor:settings:v1';
 export const DIMENSION_LABELS = ['0D', '1D', '2D', '3D', '4D', '5D', '6D', '7D'];
 export const PRIME_LABELS = ['2', '3', '5', '7', '11', '13', '17'];
 
-const AXES = [
+const DEFAULT_AXES = [
     [0],
     [1],
     [-1, 1],
@@ -37,8 +37,8 @@ function axisFields() {
         `axes.${dim}.${index}`,
         `${label} · p${prime}`,
         'number',
-        AXES[dim][index] ?? 0,
-        { min: -9, max: 9, step: 1, effect: 'defs', digitsOnly: true }
+        DEFAULT_AXES[dim][index] ?? 0,
+        { scope: 'project', min: -9, max: 9, step: 1, effect: 'defs', digitsOnly: true }
     )));
 }
 
@@ -50,7 +50,6 @@ export const settingFields = [
     field('General', 'octaveScale', 'Octave scale', 'number', 120, { min: 20, max: 400, step: 1, effect: 'redraw' }),
     field('General', 'chordsBgColor', 'Chord background', 'color', '#676681', { effect: 'redraw' }),
 
-    ...axisFields(),
     ...arrayField('Colors', 'axisColors', DIMENSION_LABELS, 'color', AXIS_COLORS, { effect: 'defs' }),
 
     ...arrayField('Hotkeys', 'hotkeys.selectDimension', DIMENSION_LABELS, 'text', SELECT_DIMENSION_HOTKEYS, { maxLength: 1, effect: 'none' }),
@@ -92,7 +91,10 @@ export const settingFields = [
     field('Viewport', 'horizPadding', 'Horizontal padding', 'number', 0, { min: 0, max: 100, step: 1, effect: 'refit' }),
 ];
 
+export const projectSettingFields = axisFields();
+
 const fieldsByPath = new Map(settingFields.map((descriptor) => [descriptor.path, descriptor]));
+const projectFieldsByPath = new Map(projectSettingFields.map((descriptor) => [descriptor.path, descriptor]));
 
 export const settings = {};
 
@@ -112,11 +114,11 @@ function setPath(target, path, value) {
     current[parts[parts.length - 1]] = value;
 }
 
-function coerceValue(rawValue, descriptor) {
+function coerceValue(rawValue, descriptor, target) {
     switch (descriptor.type) {
         case 'number': {
             const number = Number(rawValue);
-            if (!Number.isFinite(number)) return getPath(settings, descriptor.path);
+            if (!Number.isFinite(number)) return getPath(target, descriptor.path);
             const bounded = Math.min(descriptor.max ?? Infinity, Math.max(descriptor.min ?? -Infinity, number));
             if (!descriptor.step) return bounded;
             return Number((Math.round(bounded / descriptor.step) * descriptor.step).toFixed(6));
@@ -125,7 +127,7 @@ function coerceValue(rawValue, descriptor) {
             return Boolean(rawValue);
         case 'color': {
             const color = String(rawValue).trim().toLowerCase();
-            return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? color : getPath(settings, descriptor.path);
+            return /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? color : getPath(target, descriptor.path);
         }
         case 'text': {
             const text = String(rawValue ?? '');
@@ -136,6 +138,20 @@ function coerceValue(rawValue, descriptor) {
     }
 }
 
+function targetForDescriptor(descriptor) {
+    return descriptor.scope === 'project' ? projectSettings : settings;
+}
+
+function descriptorForPath(descriptor, path) {
+    return (descriptor.scope === 'project' ? projectFieldsByPath : fieldsByPath).get(path) ?? descriptor;
+}
+
+function writeValue(target, path, rawValue, descriptor) {
+    const value = coerceValue(rawValue, descriptor, target);
+    setPath(target, path, value);
+    return value;
+}
+
 export function setSetting(path, rawValue) {
     const descriptor = fieldsByPath.get(path);
     if (!descriptor) {
@@ -143,13 +159,73 @@ export function setSetting(path, rawValue) {
         setPath(settings, path, rawValue);
         return rawValue;
     }
-    const value = coerceValue(rawValue, descriptor);
-    setPath(settings, path, value);
-    return value;
+    return writeValue(settings, path, rawValue, descriptor);
+}
+
+export function setProjectSetting(path, rawValue) {
+    const descriptor = projectFieldsByPath.get(path);
+    if (!descriptor) {
+        if (getPath(projectSettings, path) === undefined) return undefined;
+        setPath(projectSettings, path, rawValue);
+        return rawValue;
+    }
+    return writeValue(projectSettings, path, rawValue, descriptor);
 }
 
 export function getSetting(path) {
     return getPath(settings, path);
+}
+
+export function getProjectSetting(path) {
+    return getPath(projectSettings, path);
+}
+
+export function getSettingValue(descriptor) {
+    return getPath(targetForDescriptor(descriptor), descriptor.path);
+}
+
+export function setSettingValue(descriptor, rawValue) {
+    const target = targetForDescriptor(descriptor);
+    return writeValue(target, descriptor.path, rawValue, descriptorForPath(descriptor, descriptor.path));
+}
+
+function readStoredValue(data, descriptor) {
+    if (data === null || typeof data !== 'object') return undefined;
+    if (Object.prototype.hasOwnProperty.call(data, descriptor.path)) return data[descriptor.path];
+    return getPath(data, descriptor.path);
+}
+
+export function createProjectSettings(data = null) {
+    const next = {};
+    for (const descriptor of projectSettingFields) {
+        setPath(next, descriptor.path, descriptor.default);
+    }
+    for (const descriptor of projectSettingFields) {
+        const rawValue = readStoredValue(data, descriptor);
+        if (rawValue !== undefined) {
+            setPath(next, descriptor.path, coerceValue(rawValue, descriptor, next));
+        }
+    }
+    return next;
+}
+
+export let projectSettings = createProjectSettings();
+
+export function activateProjectSettings(next) {
+    projectSettings = next;
+}
+
+export function resetProjectSettings() {
+    for (const key of Object.keys(projectSettings)) delete projectSettings[key];
+    Object.assign(projectSettings, createProjectSettings());
+}
+
+let legacyProjectSettings = null;
+
+export function takeLegacyProjectSettings() {
+    const legacy = legacyProjectSettings;
+    legacyProjectSettings = null;
+    return legacy;
 }
 
 export function loadSettings() {
@@ -163,6 +239,7 @@ export function loadSettings() {
         return;
     }
     if (data === null || typeof data !== 'object') return;
+    legacyProjectSettings = data;
     for (const descriptor of settingFields) {
         if (Object.prototype.hasOwnProperty.call(data, descriptor.path)) {
             setSetting(descriptor.path, data[descriptor.path]);
